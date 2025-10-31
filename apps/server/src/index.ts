@@ -1,21 +1,38 @@
 import "dotenv/config";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
+import { logger } from "./middlewares/pino-logger.js";
+import notFound from "stoker/middlewares/not-found";
+import onError from "stoker/middlewares/on-error";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { Scalar } from "@scalar/hono-api-reference";
+import testRouter from "./routers/test.js";
 
-const app = new Hono();
-
+const app = new OpenAPIHono();
 app.use(logger());
-app.use(
-	"/*",
-	cors({
-		origin: process.env.CORS_ORIGIN || "",
-		allowMethods: ["GET", "POST", "OPTIONS"],
-	}),
-);
 
 app.get("/", (c) => {
-	return c.text("OK");
+  return c.text("OK");
+});
+
+// Mount test router
+app.route("/test", testRouter);
+
+app.get(
+  "/prod-docs",
+  Scalar({
+    url: "/doc",
+    theme: "purple",
+    layout: "classic",
+  })
+);
+
+app.notFound(notFound);
+app.onError(onError);
+app.doc("/doc", {
+  openapi: "3.0.0",
+  info: {
+    version: "1.0.0",
+    title: "My API",
+  },
 });
 
 export default app;
