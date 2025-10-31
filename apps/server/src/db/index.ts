@@ -1,12 +1,28 @@
-import { neon, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
-import ws from "ws";
-import * as schema from "./schema";
+/**
+ * Database Connection - Drizzle ORM with Neon PostgreSQL
+ * FSC Mauritius Compliant Trading Platform
+ */
 
-neonConfig.webSocketConstructor = ws;
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import * as schema from './schema';
 
-// To work in edge environments (Cloudflare Workers, Vercel Edge, etc.), enable querying over fetch
-// neonConfig.poolQueryViaFetch = true
+// Validate DATABASE_URL environment variable
+if (!process.env.DATABASE_URL) {
+	throw new Error('DATABASE_URL environment variable is not set');
+}
 
-const sql = neon(process.env.DATABASE_URL || "");
-export const db = drizzle(sql, { schema });
+// Create Neon SQL connection
+const sql = neon(process.env.DATABASE_URL);
+
+// Initialize Drizzle with full schema
+export const db = drizzle(sql, { 
+	schema,
+	logger: process.env.NODE_ENV === 'development',
+});
+
+// Export schema for use in queries
+export * from './schema';
+
+// Export Drizzle operators for convenience
+export { eq, and, or, desc, asc, sql, gte, lte, between, like, ilike, inArray } from 'drizzle-orm';

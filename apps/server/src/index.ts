@@ -4,7 +4,6 @@ import notFound from "stoker/middlewares/not-found";
 import onError from "stoker/middlewares/on-error";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
-import testRouter from "./routers/test.js";
 
 const app = new OpenAPIHono();
 app.use(logger());
@@ -13,8 +12,7 @@ app.get("/", (c) => {
   return c.text("OK");
 });
 
-// Mount test router
-app.route("/test", testRouter);
+
 
 app.get(
   "/prod-docs",
