@@ -3,7 +3,7 @@ import {
 	DarkTheme,
 	DefaultTheme,
 	type Theme,
-	ThemeProvider,
+	ThemeProvider as NavigationThemeProvider,
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -13,6 +13,7 @@ import React, { useRef } from "react";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { Platform } from "react-native";
 import { setAndroidNavigationBar } from "@/lib/android-navigation-bar";
+import { ThemeProvider } from "../utils/ThemeContext";
 
 const LIGHT_THEME: Theme = {
 	...DefaultTheme,
@@ -49,17 +50,19 @@ export default function RootLayout() {
 		return null;
 	}
 	return (
-		<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-			<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
-			<GestureHandlerRootView style={{ flex: 1 }}>
-				<Stack>
-					<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
-					<Stack.Screen
-						name="modal"
-						options={{ title: "Modal", presentation: "modal" }}
-					/>
-				</Stack>
-			</GestureHandlerRootView>
+		<ThemeProvider>
+			<NavigationThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+				<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+				<GestureHandlerRootView style={{ flex: 1 }}>
+					<Stack>
+						<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+						<Stack.Screen
+							name="modal"
+							options={{ title: "Modal", presentation: "modal" }}
+						/>
+					</Stack>
+				</GestureHandlerRootView>
+			</NavigationThemeProvider>
 		</ThemeProvider>
 	);
 }
