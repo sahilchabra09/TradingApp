@@ -46,9 +46,9 @@ export const riskProfileEnum = pgEnum('risk_profile', [
 export const users = pgTable('users', {
 	id: uuid('id').defaultRandom().primaryKey(),
 	
-	// Authentication
+	// Authentication - Clerk Integration
+	clerkId: varchar('clerk_id', { length: 255 }).notNull().unique(),
 	email: varchar('email', { length: 255 }).notNull().unique(),
-	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
 	
 	// Personal Information - FSC Mauritius Requirement
 	firstName: varchar('first_name', { length: 100 }).notNull(),
@@ -79,6 +79,9 @@ export const users = pgTable('users', {
 	// Risk Assessment
 	riskProfile: riskProfileEnum('risk_profile').default('moderate'),
 	
+	// Admin flag
+	isAdmin: boolean('is_admin').notNull().default(false),
+	
 	// Activity Tracking
 	lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
 	
@@ -86,6 +89,7 @@ export const users = pgTable('users', {
 	...timestamps,
 	...softDelete, // FSC Mauritius: Soft delete for data retention
 }, (table) => ({
+	clerkIdIdx: index('users_clerk_id_idx').on(table.clerkId),
 	emailIdx: index('users_email_idx').on(table.email),
 	accountStatusIdx: index('users_account_status_idx').on(table.accountStatus),
 	kycStatusIdx: index('users_kyc_status_idx').on(table.kycStatus),
@@ -107,21 +111,21 @@ export const usersRelations = relations(users, ({ many }) => ({
 
 // Zod Schemas for validation
 export const insertUserSchema = createInsertSchema(users, {
+	clerkId: z.string().min(1, 'Clerk ID is required'),
 	email: z.string().email('Invalid email address'),
 	phoneNumber: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Phone number must be in E.164 format').optional(),
-	dateOfBirth: z.date().max(new Date(), 'Date of birth cannot be in the future'),
-	nationality: z.string().length(3, 'Nationality must be ISO 3166-1 alpha-3 code'),
+	dateOfBirth: z.date().max(new Date(), 'Date of birth cannot be in the future').optional(),
+	nationality: z.string().length(3, 'Nationality must be ISO 3166-1 alpha-3 code').optional(),
 	firstName: z.string().min(1).max(100),
 	lastName: z.string().min(1).max(100),
-	passwordHash: z.string().min(60), // bcrypt hash length
 });
 
 export const selectUserSchema = createSelectSchema(users);
 
 // Safe user schema (excludes sensitive fields)
 export const publicUserSchema = selectUserSchema.omit({
-	passwordHash: true,
 	twoFactorSecret: true,
+	isAdmin: true,
 });
 
 // Type inference

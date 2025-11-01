@@ -14,7 +14,10 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@clerk/backend": "^2.19.1",
+    "@hono/clerk-auth": "^3.0.3",
     "@hono/zod-openapi": "^1.1.4",
+    "@hono/zod-validator": "^0.7.4",
     "@neondatabase/serverless": "^1.0.1",
     "@scalar/hono-api-reference": "^0.9.22",
     "dotenv": "^17.2.1",
@@ -24,6 +27,7 @@
     "hono-pino": "^0.10.3",
     "pino-pretty": "^13.1.2",
     "stoker": "^2.0.1",
+    "svix": "^1.81.0",
     "ws": "^8.18.3",
     "zod": "^4.0.2"
   },
