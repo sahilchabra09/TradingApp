@@ -7,6 +7,7 @@ import {
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../global.css";
 import { NAV_THEME } from "@/lib/constants";
 import React, { useRef } from "react";
@@ -49,18 +50,20 @@ export default function RootLayout() {
 		return null;
 	}
 	return (
-		<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-			<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
-			<GestureHandlerRootView style={{ flex: 1 }}>
-				<Stack>
-					<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
-					<Stack.Screen
-						name="modal"
-						options={{ title: "Modal", presentation: "modal" }}
-					/>
-				</Stack>
-			</GestureHandlerRootView>
-		</ThemeProvider>
+		<SafeAreaProvider>
+			<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+				<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+				<GestureHandlerRootView style={{ flex: 1 }}>
+					<Stack>
+						<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+						<Stack.Screen
+							name="modal"
+							options={{ title: "Modal", presentation: "modal" }}
+						/>
+					</Stack>
+				</GestureHandlerRootView>
+			</ThemeProvider>
+		</SafeAreaProvider>
 	);
 }
 

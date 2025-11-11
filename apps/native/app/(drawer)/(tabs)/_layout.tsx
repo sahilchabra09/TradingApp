@@ -10,18 +10,18 @@ export default function TabLayout() {
 			screenOptions={{
 				headerShown: false,
 				tabBarActiveTintColor: isDarkColorScheme
-					? "hsl(217.2 91.2% 59.8%)"
-					: "hsl(221.2 83.2% 53.3%)",
+					? "#00D35A"
+					: "#00A347",
 				tabBarInactiveTintColor: isDarkColorScheme
 					? "hsl(215 20.2% 65.1%)"
 					: "hsl(215.4 16.3% 46.9%)",
 				tabBarStyle: {
 					backgroundColor: isDarkColorScheme
-						? "hsl(222.2 84% 4.9%)"
-						: "hsl(0 0% 100%)",
+						? "#001C10"
+						: "#FFFFFF",
 					borderTopColor: isDarkColorScheme
-						? "hsl(217.2 32.6% 17.5%)"
-						: "hsl(214.3 31.8% 91.4%)",
+						? "#003C24"
+						: "#E9FFF1",
 				},
 			}}
 		>
@@ -33,12 +33,31 @@ export default function TabLayout() {
 				}}
 			/>
 			<Tabs.Screen
-				name="two"
+				name="markets"
 				options={{
-					title: "Explore",
-					tabBarIcon: ({ color }) => (
-						<TabBarIcon name="compass" color={color} />
-					),
+					title: "Markets",
+					tabBarIcon: ({ color }) => <TabBarIcon name="bar-chart" color={color} />,
+				}}
+			/>
+			<Tabs.Screen
+				name="trade"
+				options={{
+					title: "Trade",
+					tabBarIcon: ({ color }) => <TabBarIcon name="shopping-cart" color={color} />,
+				}}
+			/>
+			<Tabs.Screen
+				name="news"
+				options={{
+					title: "News",
+					tabBarIcon: ({ color }) => <TabBarIcon name="file-text" color={color} />,
+				}}
+			/>
+			<Tabs.Screen
+				name="profile"
+				options={{
+					title: "Profile",
+					tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
 				}}
 			/>
 		</Tabs>
