@@ -2,6 +2,7 @@
  * Markets Screen
  */
 import { View, Text, FlatList, TextInput, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
@@ -19,7 +20,7 @@ export default function MarketsScreen() {
     .filter((a) => filterType === 'all' ? true : filterType === 'gainers' ? a.changePercentage24h > 0 : a.changePercentage24h < 0);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
       {/* Search Bar */}
       <View style={{ padding: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface.primary, borderRadius: 12, paddingHorizontal: 16, height: 48 }}>
@@ -83,6 +84,6 @@ export default function MarketsScreen() {
       />
 
       <FAB icon={<Text style={{ fontSize: 24 }}>⚡</Text>} onPress={() => {}} position="bottom-right" variant="primary" />
-    </View>
+    </SafeAreaView>
   );
 }

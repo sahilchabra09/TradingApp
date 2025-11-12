@@ -2,6 +2,7 @@
  * Profile Screen
  */
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -19,7 +20,7 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
         <Card variant="glass" style={{ marginBottom: 24, padding: 24, alignItems: 'center' }}>
@@ -50,6 +51,6 @@ export default function ProfileScreen() {
 
         <Button title="Sign Out" onPress={() => {}} variant="outline" fullWidth style={{ marginTop: 24, marginBottom: 40 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

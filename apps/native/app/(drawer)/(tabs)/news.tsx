@@ -2,6 +2,7 @@
  * News Screen
  */
 import { View, Text, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { mockNews } from '@/lib/mockData';
@@ -11,7 +12,7 @@ export default function NewsScreen() {
   const theme = useTheme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 16 }}>Market News</Text>
 
@@ -35,6 +36,6 @@ export default function NewsScreen() {
           </Card>
         ))}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

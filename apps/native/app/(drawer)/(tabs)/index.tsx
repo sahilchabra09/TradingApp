@@ -2,6 +2,7 @@
  * Home Dashboard Screen
  */
 import { View, Text, ScrollView, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { FAB } from '@/components/FAB';
@@ -15,7 +16,7 @@ export default function HomeScreen() {
   const { totalValue, totalGain, totalGainPercentage, holdings } = mockPortfolio;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Portfolio Card */}
         <Card variant="glass" style={{ margin: 16, padding: 24 }}>
@@ -67,6 +68,6 @@ export default function HomeScreen() {
       </ScrollView>
 
       <FAB icon={<Text style={{ fontSize: 24 }}>💹</Text>} onPress={() => {}} position="bottom-right" variant="primary" />
-    </View>
+    </SafeAreaView>
   );
 }

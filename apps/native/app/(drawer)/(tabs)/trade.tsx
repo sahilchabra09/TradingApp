@@ -2,6 +2,7 @@
  * Trade Screen
  */
 import { View, Text, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
@@ -14,7 +15,7 @@ export default function TradeScreen() {
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 16 }}>Quick Trade</Text>
 
@@ -44,6 +45,6 @@ export default function TradeScreen() {
 
         <Button title={`${tradeType === 'buy' ? 'Buy' : 'Sell'} BTC`} onPress={() => {}} variant={tradeType === 'buy' ? 'primary' : 'danger'} fullWidth />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

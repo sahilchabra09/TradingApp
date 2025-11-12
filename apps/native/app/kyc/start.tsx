@@ -2,6 +2,7 @@
  * KYC Start Screen
  */
 import { View, Text, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
@@ -17,7 +18,7 @@ export default function KYCStartScreen() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         <Text style={{ fontSize: 64, textAlign: 'center', marginTop: 40, marginBottom: 24 }}>📋</Text>
         <Text style={{ fontSize: 30, fontWeight: 'bold', color: theme.colors.text.primary, textAlign: 'center', marginBottom: 12 }}>
@@ -43,6 +44,6 @@ export default function KYCStartScreen() {
 
         <Button title="Start Verification" onPress={() => router.push('/kyc/document-capture' as any)} variant="primary" fullWidth style={{ marginTop: 24, marginBottom: 40 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
