@@ -5,7 +5,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Animated, Keyboard } from 'react-native';
 import { useColorScheme as useNativeColorScheme } from 'react-native';
-import { lightTheme, darkTheme, type Theme } from '@/lib/theme';
+import { lightTheme, darkTheme, type Theme } from './theme';
 
 /**
  * Hook to get the current theme
