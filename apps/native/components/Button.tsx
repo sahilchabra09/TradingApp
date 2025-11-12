@@ -1,8 +1,3 @@
-/**
- * Button Component
- * Customizable button with variants and states
- */
-
 import React from 'react';
 import {
   TouchableOpacity,
@@ -75,17 +70,20 @@ export const Button: React.FC<ButtonProps> = ({
         Object.assign(baseStyle, !disabled && Shadows.md);
         break;
       case 'secondary':
-        baseStyle.backgroundColor = theme.colors.surface.secondary;
+        baseStyle.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        baseStyle.borderWidth = 1;
+        baseStyle.borderColor = 'rgba(255, 255, 255, 0.2)';
         break;
       case 'outline':
         baseStyle.backgroundColor = 'transparent';
-        baseStyle.borderWidth = 1.5;
+        baseStyle.borderWidth = 2;
         baseStyle.borderColor = theme.colors.accent.primary;
         break;
       case 'danger':
         baseStyle.backgroundColor = disabled
           ? theme.colors.text.disabled
           : theme.colors.error;
+        Object.assign(baseStyle, !disabled && Shadows.md);
         break;
       case 'ghost':
         baseStyle.backgroundColor = 'transparent';
@@ -120,11 +118,16 @@ export const Button: React.FC<ButtonProps> = ({
     // Variant text colors
     switch (variant) {
       case 'primary':
+        baseTextStyle.color = '#000000';
+        baseTextStyle.fontWeight = '700';
+        break;
       case 'danger':
-        baseTextStyle.color = theme.colors.text.inverse;
+        baseTextStyle.color = '#FFFFFF';
+        baseTextStyle.fontWeight = '700';
         break;
       case 'outline':
         baseTextStyle.color = theme.colors.accent.primary;
+        baseTextStyle.fontWeight = '700';
         break;
       default:
         baseTextStyle.color = theme.colors.text.primary;

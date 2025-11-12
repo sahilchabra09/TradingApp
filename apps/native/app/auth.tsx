@@ -39,7 +39,7 @@ export default function AuthScreen() {
           <Input label="Email" value={email} onChangeText={setEmail} placeholder="Enter your email" keyboardType="email-address" autoCapitalize="none" />
           <Input label="Password" value={password} onChangeText={setPassword} placeholder="Enter your password" secureTextEntry />
 
-          <Button title={isLogin ? 'Sign In' : 'Sign Up'} onPress={handleSubmit} loading={loading} variant="primary" fullWidth style={{ marginTop: 20 }} />
+          <Button title={isLogin ? 'Sign In' : 'Sign Up'} onPress={handleSubmit} loading={loading} fullWidth style={{ marginTop: 20 }} />
 
           <TouchableOpacity onPress={() => setIsLogin(!isLogin)} style={{ marginTop: 24, alignSelf: 'center' }}>
             <Text style={{ color: theme.colors.text.secondary }}>

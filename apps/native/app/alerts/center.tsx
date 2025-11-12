@@ -29,7 +29,7 @@ export default function AlertsCenterScreen() {
         </View>
 
         {mockAlerts.map((alert) => (
-          <Card key={alert.id} variant={alert.read ? 'flat' : 'elevated'} style={{ marginBottom: 12, opacity: alert.read ? 0.6 : 1 }}>
+          <Card key={alert.id} style={{ marginBottom: 12, opacity: alert.read ? 0.6 : 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
               <Text style={{ fontSize: 32, marginRight: 12 }}>{typeEmojis[alert.type] || '🔔'}</Text>
               <View style={{ flex: 1 }}>
@@ -42,7 +42,7 @@ export default function AlertsCenterScreen() {
           </Card>
         ))}
 
-        <Button title="Manage Alert Settings" onPress={() => {}} variant="outline" fullWidth style={{ marginTop: 24 }} />
+        <Button title="Manage Alert Settings" onPress={() => {}} fullWidth style={{ marginTop: 24 }} />
       </ScrollView>
     </View>
   );

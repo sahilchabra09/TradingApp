@@ -14,7 +14,7 @@ export default function PortfolioDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-        <Card variant="elevated" style={{ marginBottom: 24 }}>
+        <Card style={{ marginBottom: 24 }}>
           <Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 8 }}>Total Portfolio Value</Text>
           <Text style={{ color: theme.colors.text.primary, fontSize: 36, fontWeight: 'bold', fontFamily: 'RobotoMono', marginBottom: 8 }}>
             {formatCurrency(mockPortfolio.totalValue)}
@@ -30,14 +30,14 @@ export default function PortfolioDetailScreen() {
         </Card>
 
         <Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 16 }}>Performance 📊</Text>
-        <Card variant="elevated" style={{ height: 200, marginBottom: 24, justifyContent: 'center', alignItems: 'center' }}>
+        <Card style={{ height: 200, marginBottom: 24, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={{ color: theme.colors.text.secondary, fontSize: 15 }}>📈 Chart Placeholder</Text>
           <Text style={{ color: theme.colors.text.tertiary, fontSize: 12, marginTop: 4 }}>30-day performance</Text>
         </Card>
 
         <Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 16 }}>Holdings Breakdown</Text>
         {mockPortfolio.holdings.map((holding) => (
-          <Card key={holding.symbol} variant="elevated" style={{ marginBottom: 12 }}>
+          <Card key={holding.symbol} style={{ marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 4 }}>{holding.symbol}</Text>

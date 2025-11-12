@@ -2,16 +2,22 @@
  * Deposit Success Screen
  */
 import { View, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/lib/hooks';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DepositSuccessScreen() {
   const theme = useTheme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary, justifyContent: 'center', padding: 32 }}>
-      <Text style={{ fontSize: 80, textAlign: 'center', marginBottom: 24 }}>✅</Text>
+    <LinearGradient colors={['#000000', '#0a3d2e', '#000000']} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', padding: 32 }} edges={['top', 'bottom']}>
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+          <Ionicons name="checkmark-circle" size={100} color={theme.colors.success} />
+        </View>
       <Text style={{ color: theme.colors.text.primary, fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 16 }}>
         Deposit Initiated
       </Text>
@@ -19,7 +25,7 @@ export default function DepositSuccessScreen() {
         Your deposit of $5,000 is being processed. Funds will be available within 3-5 business days.
       </Text>
 
-      <Card variant="elevated" style={{ marginBottom: 32 }}>
+      <Card style={{ marginBottom: 32 }}>
         <View style={{ paddingVertical: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
             <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>Amount</Text>
@@ -36,7 +42,8 @@ export default function DepositSuccessScreen() {
         </View>
       </Card>
 
-      <Button title="Back to Home" onPress={() => {}} variant="primary" fullWidth />
-    </View>
+      <Button title="Back to Home" onPress={() => {}} fullWidth />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }

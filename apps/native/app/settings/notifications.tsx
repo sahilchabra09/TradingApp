@@ -27,7 +27,7 @@ export default function NotificationSettingsScreen() {
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         <Text style={{ color: theme.colors.text.primary, fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>Notifications 🔔</Text>
 
-        <Card variant="elevated">
+        <Card>
           {settings.map((setting, index) => (
             <View key={setting.id}>
               <View style={{ paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

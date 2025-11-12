@@ -31,7 +31,7 @@ export default function PriceAlertsScreen() {
           const percentDiff = Math.abs((alert.currentPrice - alert.targetPrice) / alert.targetPrice * 100);
           
           return (
-            <Card key={alert.id} variant="elevated" style={{ marginBottom: 12, opacity: alert.active ? 1 : 0.5 }}>
+            <Card key={alert.id} style={{ marginBottom: 12, opacity: alert.active ? 1 : 0.5 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 4 }}>{alert.asset}</Text>
@@ -63,7 +63,7 @@ export default function PriceAlertsScreen() {
           );
         })}
 
-        <Button title="Create New Alert" onPress={() => {}} variant="outline" fullWidth style={{ marginTop: 24 }} />
+        <Button title="Create New Alert" onPress={() => {}} fullWidth style={{ marginTop: 24 }} />
       </ScrollView>
     </View>
   );

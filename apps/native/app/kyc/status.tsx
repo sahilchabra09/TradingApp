@@ -28,7 +28,7 @@ export default function KYCStatusScreen() {
             : 'We couldn\'t verify your identity. Please try again with different documents.'}
         </Text>
 
-        <Card variant="elevated" style={{ marginBottom: 16 }}>
+        <Card style={{ marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
             <Text style={{ color: theme.colors.text.secondary }}>Document Upload</Text>
             <Text style={{ color: theme.colors.success }}>✓</Text>
@@ -44,7 +44,7 @@ export default function KYCStatusScreen() {
         </Card>
 
         {status === 'rejected' && (
-          <Button title="Try Again" onPress={() => {}} variant="primary" fullWidth style={{ marginTop: 24 }} />
+          <Button title="Try Again" onPress={() => {}} fullWidth style={{ marginTop: 24 }} />
         )}
       </ScrollView>
     </View>

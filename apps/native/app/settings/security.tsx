@@ -2,10 +2,12 @@
  * Security Settings Screen
  */
 import { View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SecurityScreen() {
   const theme = useTheme();
@@ -13,12 +15,11 @@ export default function SecurityScreen() {
   const [twoFactor, setTwoFactor] = useState(true);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-        <Text style={{ color: theme.colors.text.primary, fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>Security 🔒</Text>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
 
         <Text style={{ color: theme.colors.text.secondary, fontSize: 13, fontWeight: '600', marginBottom: 12 }}>AUTHENTICATION</Text>
-        <Card variant="elevated" style={{ marginBottom: 32 }}>
+        <Card style={{ marginBottom: 32 }}>
           <View style={{ paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: '600', marginBottom: 4 }}>Face ID / Touch ID</Text>
@@ -37,15 +38,15 @@ export default function SecurityScreen() {
         </Card>
 
         <Text style={{ color: theme.colors.text.secondary, fontSize: 13, fontWeight: '600', marginBottom: 12 }}>PASSWORD</Text>
-        <Card variant="elevated" style={{ marginBottom: 32 }}>
+        <Card style={{ marginBottom: 32 }}>
           <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ color: theme.colors.text.primary, fontSize: 15 }}>Change Password</Text>
-            <Text style={{ color: theme.colors.text.tertiary, fontSize: 20 }}>›</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
           </TouchableOpacity>
         </Card>
 
         <Text style={{ color: theme.colors.text.secondary, fontSize: 13, fontWeight: '600', marginBottom: 12 }}>DEVICES</Text>
-        <Card variant="elevated" style={{ marginBottom: 32 }}>
+        <Card style={{ marginBottom: 32 }}>
           <View style={{ paddingVertical: 12 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: '600' }}>iPhone 14 Pro</Text>
@@ -67,8 +68,8 @@ export default function SecurityScreen() {
           </View>
         </Card>
 
-        <Button title="Sign Out All Devices" onPress={() => {}} variant="danger" fullWidth />
+        <Button title="Sign Out All Devices" onPress={() => {}} fullWidth />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

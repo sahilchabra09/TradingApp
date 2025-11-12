@@ -1,6 +1,7 @@
 import { TabBarIcon } from "@/components/tabbar-icon";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { Tabs } from "expo-router";
+import { BlurView } from 'expo-blur';
 
 export default function TabLayout() {
 	const { isDarkColorScheme } = useColorScheme();
@@ -9,19 +10,21 @@ export default function TabLayout() {
 		<Tabs
 			screenOptions={{
 				headerShown: false,
-				tabBarActiveTintColor: isDarkColorScheme
-					? "#00D35A"
-					: "#00A347",
-				tabBarInactiveTintColor: isDarkColorScheme
-					? "hsl(215 20.2% 65.1%)"
-					: "hsl(215.4 16.3% 46.9%)",
+				tabBarActiveTintColor: "#10B981",
+				tabBarInactiveTintColor: "#6B7280",
 				tabBarStyle: {
-					backgroundColor: isDarkColorScheme
-						? "#001C10"
-						: "#FFFFFF",
-					borderTopColor: isDarkColorScheme
-						? "#003C24"
-						: "#E9FFF1",
+					position: 'absolute',
+					backgroundColor: 'rgba(0, 0, 0, 0.85)',
+					borderTopWidth: 1,
+					borderTopColor: 'rgba(16, 185, 129, 0.2)',
+					height: 80,
+					paddingBottom: 20,
+					paddingTop: 10,
+					elevation: 0,
+				},
+				tabBarLabelStyle: {
+					fontSize: 12,
+					fontWeight: '600',
 				},
 			}}
 		>

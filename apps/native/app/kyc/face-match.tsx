@@ -12,14 +12,14 @@ export default function FaceMatchScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background.primary, padding: 16 }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 16 }}>Face Verification</Text>
-      <Card variant="elevated" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+      <Card style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
         <Text style={{ fontSize: 64, marginBottom: 24 }}>🤳</Text>
         <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 8 }}>Take a Selfie</Text>
         <Text style={{ color: theme.colors.text.secondary, fontSize: 14, textAlign: 'center', paddingHorizontal: 20 }}>
           Position your face within the frame and follow the instructions
         </Text>
       </Card>
-      <Button title="Start Liveness Check" onPress={() => {}} variant="primary" fullWidth />
+      <Button title="Start Liveness Check" onPress={() => {}} fullWidth />
     </View>
   );
 }

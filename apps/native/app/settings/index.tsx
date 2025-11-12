@@ -3,6 +3,7 @@
  */
 import { View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
@@ -40,14 +41,19 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-        <Text style={{ color: theme.colors.text.primary, fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>Settings ⚙️</Text>
+    <LinearGradient
+      colors={['#000000', '#0a3d2e', '#000000']}
+      locations={[0, 0.5, 1]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <Text style={{ color: '#FFFFFF', fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>Settings</Text>
 
         {settingsSections.map((section) => (
           <View key={section.title} style={{ marginBottom: 32 }}>
             <Text style={{ color: theme.colors.text.secondary, fontSize: 13, fontWeight: '600', marginBottom: 12 }}>{section.title.toUpperCase()}</Text>
-            <Card variant="elevated">
+            <Card>
               {section.items.map((item, index) => (
                 <View key={item.id}>
                   {item.isLink ? (
@@ -69,5 +75,6 @@ export default function SettingsScreen() {
         ))}
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }

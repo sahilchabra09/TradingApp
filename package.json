@@ -18,7 +18,10 @@
     "db:generate": "turbo -F server db:generate",
     "db:migrate": "turbo -F server db:migrate"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "expo-linear-gradient": "^15.0.7"
+  },
   "devDependencies": {
     "turbo": "^2.5.4"
   },

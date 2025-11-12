@@ -54,7 +54,7 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={{ padding: 16, paddingBottom: 40 }}>
-                <Button title={currentIndex === 2 ? 'Get Started' : 'Next'} onPress={() => currentIndex === 2 ? router.replace('/auth' as any) : flatListRef.current?.scrollToIndex({ index: currentIndex + 1 })} variant="primary" fullWidth style={{ marginBottom: 40 }} />
+                <Button title={currentIndex === 2 ? 'Get Started' : 'Next'} onPress={() => currentIndex === 2 ? router.replace('/auth' as any) : flatListRef.current?.scrollToIndex({ index: currentIndex + 1 })} fullWidth style={{ marginBottom: 40 }} />
       </View>
     </SafeAreaView>
   );

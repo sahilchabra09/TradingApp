@@ -32,7 +32,7 @@ export default function TradeConfirmationScreen() {
           Review your order details before submitting
         </Text>
 
-        <Card variant="elevated" style={{ marginBottom: 24 }}>
+        <Card style={{ marginBottom: 24 }}>
           <View style={{ paddingVertical: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
               <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>Asset</Text>
@@ -58,15 +58,15 @@ export default function TradeConfirmationScreen() {
           </View>
         </Card>
 
-        <Card variant="flat" style={{ marginBottom: 32, backgroundColor: theme.colors.warning + '10' }}>
+        <Card style={{ marginBottom: 32, backgroundColor: theme.colors.warning + '10' }}>
           <Text style={{ color: theme.colors.text.secondary, fontSize: 13, textAlign: 'center' }}>
             ⚠️ This order will be executed at market price
           </Text>
         </Card>
 
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Button title="Cancel" onPress={() => {}} variant="outline" style={{ flex: 1 }} />
-          <Button title={tradeDetails.type === 'buy' ? 'Confirm Buy' : 'Confirm Sell'} onPress={() => {}} variant={tradeDetails.type === 'buy' ? 'primary' : 'danger'} style={{ flex: 1 }} />
+          <Button title="Cancel" onPress={() => {}} style={{ flex: 1 }} />
+          <Button title={tradeDetails.type === 'buy' ? 'Confirm Buy' : 'Confirm Sell'} onPress={() => {}} style={{ flex: 1 }} />
         </View>
       </ScrollView>
     </View>

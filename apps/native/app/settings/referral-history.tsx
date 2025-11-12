@@ -23,7 +23,7 @@ export default function ReferralHistoryScreen() {
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         <Text style={{ color: theme.colors.text.primary, fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>Referral History</Text>
 
-        <Card variant="elevated" style={{ marginBottom: 24 }}>
+        <Card style={{ marginBottom: 24 }}>
           <View style={{ alignItems: 'center', paddingVertical: 16 }}>
             <Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 8 }}>Total Earned</Text>
             <Text style={{ color: theme.colors.success, fontSize: 40, fontWeight: 'bold', fontFamily: 'RobotoMono' }}>{formatCurrency(totalEarned)}</Text>
@@ -33,7 +33,7 @@ export default function ReferralHistoryScreen() {
 
         <Text style={{ color: theme.colors.text.secondary, fontSize: 13, fontWeight: '600', marginBottom: 12 }}>REFERRALS</Text>
         {referrals.map((referral) => (
-          <Card key={referral.id} variant="elevated" style={{ marginBottom: 12 }}>
+          <Card key={referral.id} style={{ marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 4 }}>{referral.name}</Text>

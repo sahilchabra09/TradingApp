@@ -31,7 +31,7 @@ export default function TransactionHistoryScreen() {
         {filteredTrades.map((trade) => {
           const isBuy = trade.type === 'buy';
           return (
-            <Card key={trade.id} variant="elevated" style={{ marginBottom: 12 }}>
+            <Card key={trade.id} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginRight: 8 }}>{trade.symbol}</Text>

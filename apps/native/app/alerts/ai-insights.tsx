@@ -46,7 +46,7 @@ export default function AIInsightsCenterScreen() {
         </Text>
 
         {insights.map((insight) => (
-          <Card key={insight.id} variant="elevated" style={{ marginBottom: 16 }}>
+          <Card key={insight.id} style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
               <Text style={{ fontSize: 40, marginRight: 16 }}>{insight.emoji}</Text>
               <View style={{ flex: 1 }}>
@@ -64,7 +64,7 @@ export default function AIInsightsCenterScreen() {
           </Card>
         ))}
 
-        <Button title="Enable Premium AI" onPress={() => {}} variant="primary" fullWidth style={{ marginTop: 24 }} />
+        <Button title="Enable Premium AI" onPress={() => {}} fullWidth style={{ marginTop: 24 }} />
       </ScrollView>
     </View>
   );

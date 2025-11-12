@@ -20,7 +20,7 @@ export default function MaintenanceScreen() {
       <Text style={{ color: theme.colors.text.tertiary, fontSize: 13, textAlign: 'center', marginBottom: 40 }}>
         Estimated completion: 2:00 AM EST
       </Text>
-      <Button title="Check Status" onPress={() => {}} variant="outline" />
+      <Button title="Check Status" onPress={() => {}} />
     </View>
   );
 }

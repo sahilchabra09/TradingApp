@@ -3,6 +3,7 @@
  */
 import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { mockNews } from '@/lib/mockData';
@@ -12,12 +13,17 @@ export default function NewsScreen() {
   const theme = useTheme();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 16 }}>Market News</Text>
+    <LinearGradient
+      colors={['#000000', '#0a3d2e', '#000000']}
+      locations={[0, 0.5, 1]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 16 }}>Market News</Text>
 
         {mockNews.map((article) => (
-          <Card key={article.id} variant="elevated" style={{ marginBottom: 16 }}>
+          <Card key={article.id} style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
               <Text style={{ color: theme.colors.text.tertiary, fontSize: 12 }}>{article.source}</Text>
               <Text style={{ color: theme.colors.text.tertiary, fontSize: 12 }}>{formatRelativeTime(article.publishedAt)}</Text>
@@ -37,5 +43,6 @@ export default function NewsScreen() {
         ))}
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }

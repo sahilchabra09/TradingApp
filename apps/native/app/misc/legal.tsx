@@ -22,7 +22,7 @@ export default function LegalScreen() {
 
         {legalDocs.map((doc) => (
           <TouchableOpacity key={doc.id}>
-            <Card variant="elevated" style={{ marginBottom: 12 }}>
+            <Card style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 32, marginRight: 16 }}>{doc.emoji}</Text>
                 <View style={{ flex: 1 }}>
@@ -35,7 +35,7 @@ export default function LegalScreen() {
           </TouchableOpacity>
         ))}
 
-        <Card variant="flat" style={{ marginTop: 24 }}>
+        <Card style={{ marginTop: 24 }}>
           <Text style={{ color: theme.colors.text.secondary, fontSize: 13, textAlign: 'center' }}>
             By using TradeX, you agree to our Terms of Service and acknowledge that you have read our Privacy Policy
           </Text>

@@ -52,9 +52,23 @@ export default function RootLayout() {
 	return (
 		<SafeAreaProvider>
 			<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-				<StatusBar style={isDarkColorScheme ? "light" : "dark"} />
-				<GestureHandlerRootView style={{ flex: 1 }}>
-					<Stack>
+				<StatusBar style="light" />
+				<GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000000' }}>
+					<Stack screenOptions={{
+						headerStyle: {
+							backgroundColor: '#000000',
+						},
+						headerTintColor: '#10B981',
+						headerTitleStyle: {
+							fontWeight: 'bold',
+							color: '#FFFFFF',
+						},
+						headerShadowVisible: false,
+						headerTransparent: false,
+						contentStyle: {
+							backgroundColor: '#000000',
+						},
+					}}>
 						<Stack.Screen name="(drawer)" options={{ headerShown: false }} />
 						<Stack.Screen
 							name="modal"

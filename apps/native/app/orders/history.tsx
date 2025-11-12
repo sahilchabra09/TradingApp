@@ -36,7 +36,7 @@ export default function OrdersHistoryScreen() {
         </View>
 
         {filteredOrders.map((order) => (
-          <Card key={order.id} variant="elevated" style={{ marginBottom: 12 }}>
+          <Card key={order.id} style={{ marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginRight: 8 }}>{order.symbol}</Text>

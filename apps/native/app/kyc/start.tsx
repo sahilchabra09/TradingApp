@@ -3,6 +3,7 @@
  */
 import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
@@ -18,9 +19,14 @@ export default function KYCStartScreen() {
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-        <Text style={{ fontSize: 64, textAlign: 'center', marginTop: 40, marginBottom: 24 }}>📋</Text>
+    <LinearGradient
+      colors={['#000000', '#0a3d2e', '#000000']}
+      locations={[0, 0.5, 1]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <Text style={{ fontSize: 64, textAlign: 'center', marginTop: 40, marginBottom: 24 }}>📋</Text>
         <Text style={{ fontSize: 30, fontWeight: 'bold', color: theme.colors.text.primary, textAlign: 'center', marginBottom: 12 }}>
           Complete KYC
         </Text>
@@ -29,7 +35,7 @@ export default function KYCStartScreen() {
         </Text>
 
         {steps.map((step) => (
-          <Card key={step.id} variant="elevated" style={{ marginBottom: 16 }}>
+          <Card key={step.id} style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: theme.colors.accent.primary + '20', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
                 <Text style={{ fontSize: 24 }}>{step.emoji}</Text>
@@ -42,8 +48,9 @@ export default function KYCStartScreen() {
           </Card>
         ))}
 
-        <Button title="Start Verification" onPress={() => router.push('/kyc/document-capture' as any)} variant="primary" fullWidth style={{ marginTop: 24, marginBottom: 40 }} />
+        <Button title="Start Verification" onPress={() => router.push('/kyc/document-capture' as any)} fullWidth style={{ marginTop: 24, marginBottom: 40 }} />
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }

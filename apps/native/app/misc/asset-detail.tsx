@@ -30,14 +30,14 @@ export default function AssetDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        <Card variant="elevated" style={{ marginBottom: 24 }}>
+        <Card style={{ marginBottom: 24 }}>
           <Text style={{ color: theme.colors.text.primary, fontSize: 40, fontWeight: 'bold', fontFamily: 'RobotoMono', marginBottom: 8 }}>{formatCurrency(asset.price)}</Text>
           <Text style={{ color: isPositive ? theme.colors.success : theme.colors.error, fontSize: 17, fontWeight: '600' }}>
             {isPositive ? '↑' : '↓'} {formatCurrency(Math.abs(asset.price * asset.change24h / 100))} ({formatPercentage(Math.abs(asset.change24h))})
           </Text>
         </Card>
 
-        <Card variant="elevated" style={{ height: 250, marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
+        <Card style={{ height: 250, marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={{ color: theme.colors.text.secondary, fontSize: 15 }}>📈 Chart Placeholder</Text>
         </Card>
 
@@ -50,7 +50,7 @@ export default function AssetDetailScreen() {
         </View>
 
         <Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 16 }}>Stats</Text>
-        <Card variant="elevated" style={{ marginBottom: 24 }}>
+        <Card style={{ marginBottom: 24 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12 }}>
             <Text style={{ color: theme.colors.text.secondary, fontSize: 14 }}>Market Cap</Text>
             <Text style={{ color: theme.colors.text.primary, fontSize: 14, fontWeight: '600' }}>{formatCompactNumber(asset.volume24h * 100)}</Text>
@@ -68,8 +68,8 @@ export default function AssetDetailScreen() {
         </Card>
 
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 40 }}>
-          <Button title="Buy" onPress={() => {}} variant="primary" style={{ flex: 1 }} />
-          <Button title="Sell" onPress={() => {}} variant="danger" style={{ flex: 1 }} />
+          <Button title="Buy" onPress={() => {}} style={{ flex: 1 }} />
+          <Button title="Sell" onPress={() => {}} style={{ flex: 1 }} />
         </View>
       </ScrollView>
     </View>

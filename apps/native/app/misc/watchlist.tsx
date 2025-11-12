@@ -25,7 +25,7 @@ export default function WatchlistScreen() {
           const isPositive = asset.change24h >= 0;
           return (
             <TouchableOpacity key={asset.id}>
-              <Card variant="elevated" style={{ marginBottom: 12 }}>
+              <Card style={{ marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 4 }}>{asset.symbol}</Text>

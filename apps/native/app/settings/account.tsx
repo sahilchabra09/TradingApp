@@ -2,6 +2,8 @@
  * Account Details Screen
  */
 import { View, Text, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -10,8 +12,9 @@ export default function AccountDetailsScreen() {
   const theme = useTheme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+    <LinearGradient colors={['#000000', '#0a3d2e', '#000000']} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: theme.colors.accent.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <Text style={{ color: '#FFFFFF', fontSize: 40, fontWeight: 'bold' }}>JD</Text>
@@ -24,7 +27,7 @@ export default function AccountDetailsScreen() {
         </View>
 
         <Text style={{ color: theme.colors.text.secondary, fontSize: 13, fontWeight: '600', marginBottom: 12 }}>ACCOUNT INFO</Text>
-        <Card variant="elevated" style={{ marginBottom: 32 }}>
+        <Card style={{ marginBottom: 32 }}>
           <View style={{ paddingVertical: 12 }}>
             <Text style={{ color: theme.colors.text.secondary, fontSize: 12, marginBottom: 4 }}>Member Since</Text>
             <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: '600' }}>January 2024</Text>
@@ -50,7 +53,7 @@ export default function AccountDetailsScreen() {
         </Card>
 
         <Text style={{ color: theme.colors.text.secondary, fontSize: 13, fontWeight: '600', marginBottom: 12 }}>TRADING LIMITS</Text>
-        <Card variant="elevated" style={{ marginBottom: 32 }}>
+        <Card style={{ marginBottom: 32 }}>
           <View style={{ paddingVertical: 12 }}>
             <Text style={{ color: theme.colors.text.secondary, fontSize: 12, marginBottom: 4 }}>Daily Limit</Text>
             <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: '600' }}>$50,000</Text>
@@ -62,8 +65,10 @@ export default function AccountDetailsScreen() {
           </View>
         </Card>
 
-        <Button title="Edit Profile" onPress={() => {}} variant="outline" fullWidth />
+        <Button title="Edit Profile" onPress={() => {}} fullWidth />
       </ScrollView>
-    </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
+

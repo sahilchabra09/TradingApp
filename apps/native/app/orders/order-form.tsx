@@ -27,7 +27,7 @@ export default function OrderFormScreen() {
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         <Text style={{ color: theme.colors.text.primary, fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>Advanced Orders 📝</Text>
 
-        <Card variant="elevated" style={{ marginBottom: 24 }}>
+        <Card style={{ marginBottom: 24 }}>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
             <TouchableOpacity style={{ flex: 1, padding: 12, borderRadius: 12, backgroundColor: side === 'buy' ? theme.colors.success : theme.colors.surface.secondary }} onPress={() => setSide('buy')}>
               <Text style={{ color: side === 'buy' ? '#FFFFFF' : theme.colors.text.secondary, fontSize: 15, fontWeight: '600', textAlign: 'center' }}>Buy</Text>
@@ -57,7 +57,7 @@ export default function OrderFormScreen() {
         <Input label="Quantity" placeholder="0.00" value={quantity} onChangeText={setQuantity} keyboardType="numeric" style={{ marginBottom: 16 }} />
         <Input label="Limit Price" placeholder="$0.00" value={limitPrice} onChangeText={setLimitPrice} keyboardType="numeric" style={{ marginBottom: 24 }} />
 
-        <Button title={`Place ${side === 'buy' ? 'Buy' : 'Sell'} Order`} onPress={() => {}} variant={side === 'buy' ? 'primary' : 'danger'} fullWidth />
+        <Button title={`Place ${side === 'buy' ? 'Buy' : 'Sell'} Order`} onPress={() => {}} fullWidth />
       </ScrollView>
     </View>
   );
