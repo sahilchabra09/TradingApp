@@ -58,7 +58,7 @@ export const unstable_settings = {
 };
 
 const AUTH_SEGMENTS = new Set(["(auth)", "sign-in", "sign-up", "verify-email"]);
-const APP_SEGMENTS = new Set(["(drawer)", "", undefined]);
+const GUEST_SEGMENTS = new Set(["onboarding"]);
 
 const InitialLayout = () => {
 	const { isLoaded, isSignedIn } = useAuth();
@@ -75,17 +75,21 @@ const InitialLayout = () => {
 		if (!isLoaded) {
 			return;
 		}
-		const firstSegment = segments[0];
-		const inAuth = AUTH_SEGMENTS.has(firstSegment as string);
-		const inApp = APP_SEGMENTS.has(firstSegment as string);
 
-		if (isSignedIn && !inApp) {
-			router.replace("/");
+		const [firstSegment] = segments as Array<string | undefined>;
+		const inAuth = firstSegment ? AUTH_SEGMENTS.has(firstSegment) : false;
+		const guestAllowed = firstSegment ? GUEST_SEGMENTS.has(firstSegment) : false;
+
+		if (!isSignedIn) {
+			if (inAuth || guestAllowed) {
+				return;
+			}
+			router.replace("/sign-in");
 			return;
 		}
 
-		if (!isSignedIn && !inAuth) {
-			router.replace("/sign-in");
+		if (isSignedIn && inAuth) {
+			router.replace("/");
 		}
 	}, [isLoaded, isSignedIn, segments, router]);
 

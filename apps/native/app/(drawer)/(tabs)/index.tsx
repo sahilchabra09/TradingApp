@@ -1,10 +1,11 @@
 /**
  * Home Dashboard Screen
  */
-import { View, Text, ScrollView, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/lib/hooks';
 import { mockPortfolio, mockAssets } from '@/lib/mockData';
 import { formatCurrency, formatPercentage } from '@/lib/formatters';
@@ -13,6 +14,7 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const { totalValue, totalGain, totalGainPercentage, holdings } = mockPortfolio;
 
   return (
@@ -40,48 +42,57 @@ export default function HomeScreen() {
           {/* Holdings */}
           <View style={{ paddingHorizontal: 16 }}>
             <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 'bold', marginBottom: 16 }}>Your Holdings</Text>
-            {holdings.map((h, i) => (
-              <View key={i} style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+            {holdings.map((h) => (
+              <TouchableOpacity
+                key={h.assetId}
+                activeOpacity={0.85}
+                onPress={() => router.push({ pathname: '/misc/asset-detail', params: { id: h.assetId } })}
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}
+              >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <View>
-                  <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600', marginBottom: 4 }}>{h.symbol}</Text>
-                  <Text style={{ color: '#9CA3AF', fontSize: 13 }}>{h.amount} {h.symbol}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600', marginBottom: 4 }}>{formatCurrency(h.value)}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name={h.gain >= 0 ? "arrow-up" : "arrow-down"} size={14} color={h.gain >= 0 ? theme.colors.success : theme.colors.error} />
-                    <Text style={{ color: h.gain >= 0 ? theme.colors.success : theme.colors.error, fontSize: 13, fontWeight: '600', marginLeft: 4 }}>
-                      {formatPercentage(h.gainPercentage)}
-                    </Text>
+                  <View>
+                    <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600', marginBottom: 4 }}>{h.symbol}</Text>
+                    <Text style={{ color: '#9CA3AF', fontSize: 13 }}>{h.amount} {h.symbol}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600', marginBottom: 4 }}>{formatCurrency(h.value)}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name={h.gain >= 0 ? "arrow-up" : "arrow-down"} size={14} color={h.gain >= 0 ? theme.colors.success : theme.colors.error} />
+                      <Text style={{ color: h.gain >= 0 ? theme.colors.success : theme.colors.error, fontSize: 13, fontWeight: '600', marginLeft: 4 }}>
+                        {formatPercentage(h.gainPercentage)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Market Overview */}
-        <View style={{ paddingHorizontal: 16, marginTop: 20, marginBottom: 80 }}>
-          <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 'bold', marginBottom: 16 }}>Market Overview</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {mockAssets.slice(0, 5).map((asset) => (
-              <View key={asset.id} style={{ width: width * 0.42, marginRight: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600', marginBottom: 4 }}>{asset.symbol}</Text>
-                <Text style={{ color: '#FFFFFF', fontSize: 19, fontWeight: 'bold', marginBottom: 8 }}>{formatCurrency(asset.price)}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name={asset.changePercentage24h >= 0 ? "trending-up" : "trending-down"} size={16} color={asset.changePercentage24h >= 0 ? theme.colors.success : theme.colors.error} />
-                  <Text style={{ color: asset.changePercentage24h >= 0 ? theme.colors.success : theme.colors.error, fontSize: 14, fontWeight: '600', marginLeft: 4 }}>
-                    {formatPercentage(asset.changePercentage24h)}
-                  </Text>
-                </View>
-              </View>
+              </TouchableOpacity>
             ))}
-          </ScrollView>
-        </View>
-      </ScrollView>
+          </View>
 
-    </SafeAreaView>
+          {/* Market Overview */}
+          <View style={{ paddingHorizontal: 16, marginTop: 20, marginBottom: 80 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 'bold', marginBottom: 16 }}>Market Overview</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {mockAssets.slice(0, 5).map((asset) => (
+                <TouchableOpacity
+                  key={asset.id}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({ pathname: '/misc/asset-detail', params: { id: asset.id } })}
+                  style={{ width: width * 0.42, marginRight: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600', marginBottom: 4 }}>{asset.symbol}</Text>
+                  <Text style={{ color: '#FFFFFF', fontSize: 19, fontWeight: 'bold', marginBottom: 8 }}>{formatCurrency(asset.price)}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name={asset.changePercentage24h >= 0 ? "trending-up" : "trending-down"} size={16} color={asset.changePercentage24h >= 0 ? theme.colors.success : theme.colors.error} />
+                    <Text style={{ color: asset.changePercentage24h >= 0 ? theme.colors.success : theme.colors.error, fontSize: 14, fontWeight: '600', marginLeft: 4 }}>
+                      {formatPercentage(asset.changePercentage24h)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }

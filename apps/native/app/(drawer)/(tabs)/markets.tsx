@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { mockAssets } from '@/lib/mockData';
@@ -13,6 +14,7 @@ import { formatCurrency, formatPercentage, formatCompactNumber } from '@/lib/for
 
 export default function MarketsScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'gainers' | 'losers'>('all');
 
@@ -69,7 +71,11 @@ export default function MarketsScreen() {
         contentContainerStyle={{ padding: 16 }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <View style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push({ pathname: '/misc/asset-detail', params: { id: item.id } })}
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}
+          >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 4 }}>{item.symbol}</Text>
@@ -85,7 +91,7 @@ export default function MarketsScreen() {
                 </View>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
       />
 

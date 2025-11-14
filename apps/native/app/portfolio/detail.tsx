@@ -1,14 +1,16 @@
 /**
  * Portfolio Detail Screen
  */
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { mockPortfolio, generateChartData } from '@/lib/mockData';
 import { formatCurrency, formatPercentage } from '@/lib/formatters';
+import { useRouter } from 'expo-router';
 
 export default function PortfolioDetailScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const chartData = generateChartData(30);
 
   return (
@@ -37,22 +39,28 @@ export default function PortfolioDetailScreen() {
 
         <Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 16 }}>Holdings Breakdown</Text>
         {mockPortfolio.holdings.map((holding) => (
-          <Card key={holding.symbol} style={{ marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 4 }}>{holding.symbol}</Text>
-                <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
-                  {holding.amount} @ {formatCurrency(holding.avgBuyPrice)}
-                </Text>
+          <TouchableOpacity
+            key={holding.symbol}
+            activeOpacity={0.85}
+            onPress={() => router.push({ pathname: '/misc/asset-detail', params: { id: holding.assetId } })}
+          >
+            <Card style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 4 }}>{holding.symbol}</Text>
+                  <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
+                    {holding.amount} @ {formatCurrency(holding.avgBuyPrice)}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', fontFamily: 'RobotoMono' }}>{formatCurrency(holding.value)}</Text>
+                  <Text style={{ color: holding.gain >= 0 ? theme.colors.success : theme.colors.error, fontSize: 13 }}>
+                    {holding.gain >= 0 ? '+' : ''}{formatPercentage(holding.gainPercentage)}
+                  </Text>
+                </View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', fontFamily: 'RobotoMono' }}>{formatCurrency(holding.value)}</Text>
-                <Text style={{ color: holding.gain >= 0 ? theme.colors.success : theme.colors.error, fontSize: 13 }}>
-                  {holding.gain >= 0 ? '+' : ''}{formatPercentage(holding.gainPercentage)}
-                </Text>
-              </View>
-            </View>
-          </Card>
+            </Card>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
