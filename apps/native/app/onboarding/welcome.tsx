@@ -23,7 +23,7 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
-      <TouchableOpacity onPress={() => router.replace('/auth' as any)} style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, padding: 16 }}>
+  <TouchableOpacity onPress={() => router.replace('/sign-in' as never)} style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, padding: 16 }}>
         <Text style={{ color: theme.colors.text.secondary, fontSize: 15, fontWeight: '600' }}>Skip</Text>
       </TouchableOpacity>
 
@@ -54,7 +54,7 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={{ padding: 16, paddingBottom: 40 }}>
-                <Button title={currentIndex === 2 ? 'Get Started' : 'Next'} onPress={() => currentIndex === 2 ? router.replace('/auth' as any) : flatListRef.current?.scrollToIndex({ index: currentIndex + 1 })} fullWidth style={{ marginBottom: 40 }} />
+                <Button title={currentIndex === 2 ? 'Get Started' : 'Next'} onPress={() => currentIndex === 2 ? router.replace('/sign-in' as never) : flatListRef.current?.scrollToIndex({ index: currentIndex + 1 })} fullWidth style={{ marginBottom: 40 }} />
       </View>
     </SafeAreaView>
   );
