@@ -18,6 +18,7 @@ import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { timestamps } from './helpers';
 import { users } from './users';
+import { withdrawalRequests, depositTransactions } from './payments';
 
 export const wallets = pgTable('wallets', {
 	id: uuid('id').defaultRandom().primaryKey(),

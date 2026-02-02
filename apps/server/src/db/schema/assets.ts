@@ -19,6 +19,10 @@ import { relations } from 'drizzle-orm';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { timestamps } from './helpers';
+import { holdings } from './holdings';
+import { trades } from './trades';
+import { priceAlerts } from './alerts';
+import { riskLimits } from './compliance';
 
 // Asset classification
 export const assetTypeEnum = pgEnum('asset_type', [
@@ -125,9 +129,3 @@ export const selectAssetSchema = createSelectSchema(assets);
 // Type inference
 export type Asset = typeof assets.$inferSelect;
 export type NewAsset = typeof assets.$inferInsert;
-
-// Forward declarations for relations
-declare const holdings: any;
-declare const trades: any;
-declare const priceAlerts: any;
-declare const riskLimits: any;

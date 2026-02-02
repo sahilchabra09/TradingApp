@@ -18,6 +18,14 @@ import { relations } from 'drizzle-orm';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { timestamps, softDelete } from './helpers';
+import { wallets } from './wallets';
+import { holdings } from './holdings';
+import { trades } from './trades';
+import { kycDocuments } from './kyc';
+import { sessionHistory } from './sessions';
+import { priceAlerts } from './alerts';
+import { withdrawalRequests, depositTransactions } from './payments';
+import { amlChecks } from './compliance';
 
 // FSC Mauritius Requirement: Account status tracking for regulatory compliance
 export const accountStatusEnum = pgEnum('account_status', [
