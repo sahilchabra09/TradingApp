@@ -22,10 +22,10 @@ import { auditLogger } from './middleware/audit-logger';
 // Import routes
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
+import kycRoutes from './routes/kyc';
 // Import other routes when created
 // import tradeRoutes from './routes/trades';
 // import walletRoutes from './routes/wallets';
-// import kycRoutes from './routes/kyc';
 
 type Bindings = {
 	CLERK_SECRET_KEY: string;
@@ -77,10 +77,10 @@ const api = app.basePath('/api/v1');
 // Mount routes
 api.route('/auth', authRoutes);
 api.route('/users', userRoutes);
+api.route('/kyc', kycRoutes);
 // Add other routes when created
 // api.route('/trades', tradeRoutes);
 // api.route('/wallets', walletRoutes);
-// api.route('/kyc', kycRoutes);
 
 // 404 handler
 app.notFound((c) => c.json({ 

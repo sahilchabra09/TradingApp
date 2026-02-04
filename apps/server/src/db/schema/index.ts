@@ -14,7 +14,7 @@ export * from './assets';
 export * from './wallets';
 export * from './holdings';
 export * from './trades';
-export * from './kyc';
+export * from './kyc-sessions'; // Didit KYC verification (minimal)
 export * from './audit';
 export * from './sessions';
 export * from './alerts';

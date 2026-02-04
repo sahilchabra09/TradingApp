@@ -118,6 +118,33 @@ export const requireKYC = async (c: Context, next: Next) => {
 };
 
 /**
+ * Requires user's KYC not to be blocked (rejected or in resubmission_required state)
+ * Allows pending and not_started users to access KYC-related routes
+ * Must be used after requireAuth middleware
+ */
+export const requireKycNotBlocked = async (c: Context, next: Next) => {
+	const user = c.get('user');
+
+	if (!user) {
+		throw new UnauthorizedError('Authentication required');
+	}
+
+	// Block users who have been permanently rejected
+	if (user.kycStatus === 'rejected') {
+		throw new ForbiddenError(
+			'KYC verification was rejected. Please contact support.',
+			{
+				code: 'KYC_BLOCKED',
+				currentStatus: user.kycStatus,
+				action: 'contact_support',
+			}
+		);
+	}
+
+	await next();
+};
+
+/**
  * Requires user to have admin role
  * Must be used after requireAuth middleware
  */

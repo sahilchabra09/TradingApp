@@ -21,7 +21,6 @@ import { timestamps, softDelete } from './helpers';
 import { wallets } from './wallets';
 import { holdings } from './holdings';
 import { trades } from './trades';
-import { kycDocuments } from './kyc';
 import { sessionHistory } from './sessions';
 import { priceAlerts } from './alerts';
 import { withdrawalRequests, depositTransactions } from './payments';
@@ -109,7 +108,6 @@ export const usersRelations = relations(users, ({ many }) => ({
 	wallets: many(wallets),
 	holdings: many(holdings),
 	trades: many(trades),
-	kycDocuments: many(kycDocuments),
 	sessions: many(sessionHistory),
 	alerts: many(priceAlerts),
 	withdrawalRequests: many(withdrawalRequests),
@@ -141,13 +139,3 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type PublicUser = z.infer<typeof publicUserSchema>;
 
-// Forward declarations for relations
-declare const wallets: any;
-declare const holdings: any;
-declare const trades: any;
-declare const kycDocuments: any;
-declare const sessionHistory: any;
-declare const priceAlerts: any;
-declare const withdrawalRequests: any;
-declare const depositTransactions: any;
-declare const amlChecks: any;
