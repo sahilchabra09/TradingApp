@@ -15,9 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '@clerk/clerk-expo';
 import { useTheme } from '@/lib/hooks';
-import { kycApi, type KycSessionStatus } from '@/lib/kyc-api';
 
 // Callback URL scheme for detecting completion
 const CALLBACK_SCHEME = 'tradingapp://';
@@ -25,11 +23,8 @@ const COMPLETION_PATHS = ['/kyc/callback', '/kyc/success', '/kyc/complete'];
 
 export default function DocumentCaptureScreen() {
   const theme = useTheme();
-  const { getToken } = useAuth();
   const params = useLocalSearchParams<{
-    sessionId: string;
     sessionUrl: string;
-    providerSessionId: string;
   }>();
   
   const webViewRef = useRef<WebView>(null);
@@ -52,6 +47,18 @@ export default function DocumentCaptureScreen() {
 
     return () => backHandler.remove();
   }, [canGoBack]);
+
+  // Auto-hide loading after timeout (fallback for when onLoadEnd doesn't fire)
+  useEffect(() => {
+    if (loading && params.sessionUrl) {
+      const timeout = setTimeout(() => {
+        console.log('Loading timeout - auto-hiding loading overlay');
+        setLoading(false);
+      }, 5000); // 5 second timeout
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, params.sessionUrl]);
 
   // Show exit confirmation
   const showExitConfirmation = () => {
@@ -103,14 +110,8 @@ export default function DocumentCaptureScreen() {
     // Give a moment for any final processing
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Navigate to status page
-    router.replace({
-      pathname: '/kyc/status' as any,
-      params: {
-        sessionId: params.sessionId,
-        fromWebView: 'true',
-      },
-    });
+    // Navigate back to home - webhook will update status
+    router.replace('/(tabs)/home' as any);
   };
 
   // Handle WebView messages (from injected JavaScript)
@@ -119,7 +120,10 @@ export default function DocumentCaptureScreen() {
       const data = JSON.parse(event.nativeEvent.data);
       console.log('WebView message:', data);
 
-      if (data.type === 'verification_complete') {
+      // Hide loading when page loads
+      if (data.type === 'page_loaded') {
+        setLoading(false);
+      } else if (data.type === 'verification_complete') {
         handleVerificationComplete(data.success);
       } else if (data.type === 'verification_error') {
         Alert.alert('Verification Error', data.message || 'An error occurred during verification.');

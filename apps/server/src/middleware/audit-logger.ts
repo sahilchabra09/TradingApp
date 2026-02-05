@@ -64,16 +64,17 @@ function getEventType(path: string, method: string): string {
 }
 
 /**
- * Get event category
+ * Get event category - must match eventCategoryEnum in audit.ts
+ * Valid values: authentication, trading, compliance, admin_action, system, financial, security
  */
 function getEventCategory(path: string): string {
 	if (path.includes('/auth/')) return 'authentication';
 	if (path.includes('/trades/')) return 'trading';
-	if (path.includes('/withdrawals/')) return 'withdrawal';
-	if (path.includes('/deposits/')) return 'deposit';
-	if (path.includes('/kyc/')) return 'kyc';
+	if (path.includes('/withdrawals/')) return 'financial';
+	if (path.includes('/deposits/')) return 'financial';
+	if (path.includes('/kyc/')) return 'compliance';
 	if (path.includes('/admin/')) return 'admin_action';
-	return 'general';
+	return 'system';
 }
 
 /**

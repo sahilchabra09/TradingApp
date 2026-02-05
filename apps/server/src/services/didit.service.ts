@@ -14,12 +14,14 @@ const DIDIT_CONFIG = {
 	workflowId: process.env.DIDIT_WORKFLOW_ID || '',
 };
 
-// Types
+// Types - matches actual Didit V3 response
 export interface CreateSessionResponse {
 	session_id: string;
 	session_token: string;
-	verification_url: string;
+	url: string; // Didit calls it 'url' not 'verification_url'
 	status: string;
+	vendor_data?: string;
+	workflow_id?: string;
 }
 
 export interface WebhookPayload {
@@ -41,7 +43,7 @@ export class DiditService {
 			throw new Error('DIDIT_WORKFLOW_ID not configured');
 		}
 
-		const response = await fetch(`${DIDIT_CONFIG.baseUrl}/v3/session/`, {
+		const response = await fetch(`${DIDIT_CONFIG.baseUrl}/session/`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -60,7 +62,9 @@ export class DiditService {
 			throw new Error('Failed to create verification session');
 		}
 
-		return await response.json() as CreateSessionResponse;
+		const result = await response.json() as CreateSessionResponse;
+		console.log('Didit API response:', JSON.stringify(result, null, 2));
+		return result;
 	}
 
 	/**

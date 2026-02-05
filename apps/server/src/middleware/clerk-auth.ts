@@ -37,18 +37,28 @@ export const requireAuth = async (c: Context, next: Next) => {
 
 	try {
 		// Get user from database using Clerk userId
-		const user = await db.query.users.findFirst({
+		let user = await db.query.users.findFirst({
 			where: and(
 				eq(users.clerkId, auth.userId),
 				isNull(users.deletedAt) // Not deleted
 			),
 		});
 
+		// Auto-create user if not found (handles dev mode without webhook)
 		if (!user) {
-			throw new UnauthorizedError(
-				'User not found. Please complete registration.',
-				{ code: 'USER_NOT_FOUND' }
-			);
+			console.log('Auto-creating user for clerkId:', auth.userId);
+			const [newUser] = await db.insert(users).values({
+				clerkId: auth.userId,
+				email: '', // Will be updated from Clerk webhook later
+				firstName: '',
+				lastName: '',
+				emailVerified: false,
+				phoneVerified: false,
+				accountStatus: 'pending_kyc',
+				kycStatus: 'not_started',
+				twoFactorEnabled: false,
+			}).returning();
+			user = newUser;
 		}
 
 		// Check if account is active

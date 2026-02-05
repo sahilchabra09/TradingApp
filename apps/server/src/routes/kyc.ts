@@ -32,18 +32,8 @@ kyc.post('/session', requireAuth, async (c) => {
 		}, 400);
 	}
 
-	// Check for existing pending session
-	const existingSession = await db.query.kycSessions.findFirst({
-		where: eq(kycSessions.userId, user.id),
-		orderBy: (sessions, { desc }) => [desc(sessions.createdAt)],
-	});
-
-	if (existingSession?.status === 'pending') {
-		return c.json({ 
-			success: false, 
-			error: 'Verification already in progress' 
-		}, 400);
-	}
+	// Note: Not blocking on existing pending sessions to allow retries during development
+	// In production, you might want to add rate limiting or return existing session info
 
 	try {
 		// Create Didit session
@@ -52,12 +42,12 @@ kyc.post('/session', requireAuth, async (c) => {
 		
 		const diditSession = await DiditService.createSession(user.id, callbackUrl);
 
-		// Store session
+		// Store session (ignore if already exists from retry)
 		await db.insert(kycSessions).values({
 			userId: user.id,
 			diditSessionId: diditSession.session_id,
 			status: 'pending',
-		});
+		}).onConflictDoNothing();
 
 		// Update user status
 		await db.update(users).set({
@@ -68,7 +58,7 @@ kyc.post('/session', requireAuth, async (c) => {
 		return c.json({
 			success: true,
 			data: {
-				verification_url: diditSession.verification_url,
+				verification_url: diditSession.url, // Didit returns 'url'
 				session_token: diditSession.session_token,
 			},
 		}, 201);
