@@ -3,6 +3,7 @@
  * Loads Didit's hosted verification page in a WebView
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { 
   View, 
   Text, 
@@ -32,6 +33,29 @@ export default function DocumentCaptureScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [verificationCompleted, setVerificationCompleted] = useState(false);
+  
+  // Camera and microphone permissions for WebView
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
+
+  // Request camera and microphone permissions on mount
+  useEffect(() => {
+    const requestPermissions = async () => {
+      console.log('[KYC] Requesting camera/mic permissions for WebView...');
+      
+      if (!cameraPermission?.granted) {
+        const camResult = await requestCameraPermission();
+        console.log('[KYC] Camera permission:', camResult.granted ? 'granted' : 'denied');
+      }
+      
+      if (!micPermission?.granted) {
+        const micResult = await requestMicPermission();
+        console.log('[KYC] Microphone permission:', micResult.granted ? 'granted' : 'denied');
+      }
+    };
+    
+    requestPermissions();
+  }, [cameraPermission?.granted, micPermission?.granted]);
 
   // Handle Android back button
   useEffect(() => {
@@ -110,8 +134,11 @@ export default function DocumentCaptureScreen() {
     // Give a moment for any final processing
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Navigate back to home - webhook will update status
-    router.replace('/(tabs)/home' as any);
+    // Navigate to status screen - it will poll for webhook updates
+    router.replace({
+      pathname: '/kyc/status' as any,
+      params: { fromWebView: 'true' },
+    });
   };
 
   // Handle WebView messages (from injected JavaScript)
@@ -244,7 +271,7 @@ export default function DocumentCaptureScreen() {
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.text.tertiary,
-        backgroundColor: theme.colors.background.primary,
+        backgroundColor: 'white',
       }}>
         <TouchableOpacity 
           onPress={showExitConfirmation}
@@ -254,7 +281,7 @@ export default function DocumentCaptureScreen() {
         </TouchableOpacity>
         
         <Text style={{ 
-          color: theme.colors.text.primary, 
+          color: '#000', 
           fontSize: 17, 
           fontWeight: '600' 
         }}>
@@ -380,6 +407,11 @@ export default function DocumentCaptureScreen() {
         // Camera access for face verification
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
+        mediaCapturePermissionGrantType="grantIfSameHostElsePrompt"
+        allowsProtectedMedia={true}
+        
+        // Android: Required for camera to render properly in WebView
+        androidLayerType="hardware"
         
         // Security
         originWhitelist={['https://*', 'http://*', 'tradingapp://*']}
