@@ -23,6 +23,7 @@ import { auditLogger } from './middleware/audit-logger';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import kycRoutes from './routes/kyc';
+import adminRoutes from './routes/admin';
 // Import other routes when created
 // import tradeRoutes from './routes/trades';
 // import walletRoutes from './routes/wallets';
@@ -40,13 +41,18 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.use('*', logger());
 app.use('*', secureHeaders());
 app.use('*', cors({ 
-	origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-	credentials: true 
+	origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
+	credentials: true,
+	allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+	allowHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use('*', prettyJSON());
 
-// Clerk middleware - applied globally
-app.use('*', clerkMiddleware());
+// Clerk middleware — enabled for user-facing routes (auth, users, kyc)
+// Admin routes don't use Clerk auth (POC mode)
+app.use('/api/v1/auth/*', clerkMiddleware());
+app.use('/api/v1/users/*', clerkMiddleware());
+app.use('/api/v1/kyc/*', clerkMiddleware());
 
 // Custom middleware
 app.use('*', rateLimiter);
@@ -78,6 +84,7 @@ const api = app.basePath('/api/v1');
 api.route('/auth', authRoutes);
 api.route('/users', userRoutes);
 api.route('/kyc', kycRoutes);
+api.route('/admin', adminRoutes);
 // Add other routes when created
 // api.route('/trades', tradeRoutes);
 // api.route('/wallets', walletRoutes);
