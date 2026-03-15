@@ -6,7 +6,7 @@
 import { Platform } from 'react-native';
 
 // API Configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://3049064aa0d3.ngrok-free.app/api/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://4469-2404-7c80-74-f723-9525-1b72-5e4b-bf37.ngrok-free.app/api/v1';
 
 // Session status types
 export type KycSessionStatus = 
@@ -21,6 +21,9 @@ export type KycSessionStatus =
 
 // User KYC status (from user table)
 export type UserKycStatus = 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
+
+// Admin approval status (separate from Didit verification)
+export type AdminApprovalStatus = 'pending_approval' | 'approved' | 'rejected' | null;
 
 export interface CreateSessionResponse {
 	verification_url: string;
@@ -40,6 +43,7 @@ export interface UserKycSummary {
 	accountStatus: string;
 	lastSessionId: string | null;
 	lastSessionStatus: KycSessionStatus | null;
+	adminApprovalStatus: AdminApprovalStatus;
 	totalAttempts: number;
 	canStartNew: boolean;
 }
@@ -71,6 +75,7 @@ export interface ExtractedData {
 export interface KycStatusResponse {
 	sessionId: string;
 	status: KycSessionStatus;
+	adminApprovalStatus: AdminApprovalStatus;
 	createdAt: string;
 	completedAt?: string;
 	verificationDetails?: VerificationDetails;

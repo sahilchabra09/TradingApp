@@ -299,14 +299,14 @@ export default function DocumentCaptureScreen() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: theme.colors.background.primary,
+          backgroundColor: '#FFFFFF',
           justifyContent: 'center',
           alignItems: 'center',
           zIndex: 10,
         }}>
-          <ActivityIndicator size="large" color={theme.colors.accent.primary} />
+          <ActivityIndicator size="large" color="#000000" />
           <Text style={{ 
-            color: theme.colors.text.secondary, 
+            color: '#333333', 
             marginTop: 16,
             fontSize: 14 
           }}>
@@ -431,23 +431,6 @@ export default function DocumentCaptureScreen() {
         })}
       />
 
-      {/* Progress indicator at bottom */}
-      {!loading && !loadError && (
-        <View style={{
-          padding: 12,
-          backgroundColor: theme.colors.background.secondary,
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.text.tertiary,
-        }}>
-          <Text style={{ 
-            color: theme.colors.text.tertiary, 
-            fontSize: 12, 
-            textAlign: 'center' 
-          }}>
-            🔒 Secured by Didit • Your data is encrypted
-          </Text>
-        </View>
-      )}
     </SafeAreaView>
   );
 }

@@ -2,8 +2,8 @@
  * KYC Status Screen
  * Displays verification status and results
  */
-import { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -20,6 +20,7 @@ import {
   type KycStatusResponse,
   type UserKycSummary,
   type KycSessionStatus,
+  type AdminApprovalStatus,
 } from '@/lib/kyc-api';
 
 export default function KYCStatusScreen() {
@@ -117,6 +118,31 @@ export default function KYCStatusScreen() {
     router.replace('/kyc/start' as any);
   };
 
+  // Determine the admin approval status
+  const adminApproval: AdminApprovalStatus = sessionStatus?.adminApprovalStatus || userSummary?.adminApprovalStatus || null;
+
+  // Show popup when returning from WebView and Didit verification is complete
+  const popupShown = useRef(false);
+  useEffect(() => {
+    if (params.fromWebView === 'true' && !popupShown.current && sessionStatus) {
+      if (sessionStatus.status === 'approved' && adminApproval === 'pending_approval') {
+        popupShown.current = true;
+        Alert.alert(
+          'Verification Complete',
+          'Your identity verification has been completed successfully. Your account is now pending approval from ReTrading to start trading.',
+          [{ text: 'OK' }]
+        );
+      } else if (sessionStatus.status === 'declined') {
+        popupShown.current = true;
+        Alert.alert(
+          'Verification Failed',
+          sessionStatus.rejectionReason || 'Your identity verification was not successful. You can try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    }
+  }, [params.fromWebView, sessionStatus?.status, adminApproval]);
+
   // Get current status for display
   const currentStatus: KycSessionStatus = sessionStatus?.status || 
     (userSummary?.kycStatus === 'approved' ? 'approved' : 
@@ -124,6 +150,46 @@ export default function KYCStatusScreen() {
      userSummary?.kycStatus === 'pending' ? 'in_progress' : 'created');
   
   const statusConfig = getStatusConfig(currentStatus);
+
+  // Determine what to show the user based on combined Didit + admin status
+  const getDisplayStatus = () => {
+    // Didit approved but admin hasn't reviewed yet
+    if (currentStatus === 'approved' && adminApproval === 'pending_approval') {
+      return {
+        emoji: '\u2705',
+        title: 'Verification Complete',
+        description: 'Your identity has been verified successfully. Your account is now pending approval from ReTrading.',
+        color: '#F59E0B',
+      };
+    }
+    // Admin approved — user can trade
+    if (currentStatus === 'approved' && adminApproval === 'approved') {
+      return {
+        emoji: '\uD83C\uDF89',
+        title: 'Account Approved',
+        description: 'Your account has been approved by ReTrading. You can now start trading!',
+        color: '#10B981',
+      };
+    }
+    // Admin rejected
+    if (adminApproval === 'rejected') {
+      return {
+        emoji: '\u274C',
+        title: 'Approval Declined',
+        description: 'Your account was not approved by ReTrading. Please contact support for more information.',
+        color: '#EF4444',
+      };
+    }
+    // Default: use Didit status config
+    return {
+      emoji: statusConfig.emoji,
+      title: statusConfig.label,
+      description: statusConfig.description,
+      color: statusConfig.color,
+    };
+  };
+
+  const displayStatus = getDisplayStatus();
 
   if (loading) {
     return (
@@ -162,7 +228,7 @@ export default function KYCStatusScreen() {
         >
           {/* Status Header */}
           <Text style={{ fontSize: 64, textAlign: 'center', marginTop: 40, marginBottom: 24 }}>
-            {statusConfig.emoji}
+            {displayStatus.emoji}
           </Text>
           <Text style={{ 
             fontSize: 30, 
@@ -171,7 +237,7 @@ export default function KYCStatusScreen() {
             textAlign: 'center', 
             marginBottom: 12 
           }}>
-            {statusConfig.label}
+            {displayStatus.title}
           </Text>
           <Text style={{ 
             fontSize: 15, 
@@ -180,8 +246,30 @@ export default function KYCStatusScreen() {
             marginBottom: 8, 
             paddingHorizontal: 20 
           }}>
-            {statusConfig.description}
+            {displayStatus.description}
           </Text>
+
+          {/* Admin Approval Status Badge */}
+          {currentStatus === 'approved' && adminApproval && (
+            <View style={{
+              alignSelf: 'center',
+              backgroundColor: adminApproval === 'approved' ? '#10B98120' : adminApproval === 'rejected' ? '#EF444420' : '#F59E0B20',
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 20,
+              marginBottom: 16,
+            }}>
+              <Text style={{
+                color: adminApproval === 'approved' ? '#10B981' : adminApproval === 'rejected' ? '#EF4444' : '#F59E0B',
+                fontSize: 13,
+                fontWeight: '600',
+              }}>
+                {adminApproval === 'pending_approval' ? 'Pending Approval from ReTrading' :
+                 adminApproval === 'approved' ? 'Approved by ReTrading' :
+                 'Declined by ReTrading'}
+              </Text>
+            </View>
+          )}
 
           {/* Polling indicator */}
           {isVerificationPending(currentStatus) && params.fromWebView === 'true' && (
@@ -409,13 +497,31 @@ export default function KYCStatusScreen() {
             />
           )}
 
-          {currentStatus === 'approved' && (
+          {currentStatus === 'approved' && adminApproval === 'approved' && (
             <Button 
-              title="Continue to Trading" 
+              title="Start Trading" 
               onPress={() => router.replace('/(drawer)' as any)} 
               fullWidth 
               style={{ marginBottom: 16 }} 
             />
+          )}
+
+          {currentStatus === 'approved' && adminApproval === 'pending_approval' && (
+            <View style={{
+              backgroundColor: '#F59E0B10',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: '#F59E0B30',
+            }}>
+              <Text style={{ color: '#F59E0B', fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
+                What happens next?
+              </Text>
+              <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
+                The ReTrading team will review your verification. This usually takes a few hours. You'll be notified once your account is approved.
+              </Text>
+            </View>
           )}
 
           {/* Help link */}
