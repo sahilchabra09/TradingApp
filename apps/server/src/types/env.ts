@@ -18,6 +18,15 @@ export interface Env {
 	BROKER_API_SECRET?: string;
 	MCB_PAYMENT_KEY?: string;
 	DIDIT_API_KEY?: string;
+	APCA_API_KEY_ID?: string;
+	APCA_API_SECRET_KEY?: string;
+	APCA_API_BASE_URL?: string;
+	APCA_DATA_BASE_URL?: string;
+	APCA_API_STREAM_URL?: string;
+	APCA_DATA_FEED?: string;
+	ALPACA_SYMBOL_ALIASES?: string;
+	DEMO_SLIPPAGE_PCT?: string;
+	CLERK_JWT_SECRET?: string;
 
 	// Application
 	PORT?: string;

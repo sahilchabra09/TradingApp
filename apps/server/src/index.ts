@@ -8,6 +8,7 @@
 
 import "dotenv/config";
 import { Hono } from "hono";
+import { websocket } from 'hono/bun';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { prettyJSON } from 'hono/pretty-json';
@@ -24,6 +25,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import kycRoutes from './routes/kyc';
 import adminRoutes from './routes/admin';
+import demoRoutes from './routes/demo';
 // Import other routes when created
 // import tradeRoutes from './routes/trades';
 // import walletRoutes from './routes/wallets';
@@ -53,6 +55,7 @@ app.use('*', prettyJSON());
 app.use('/api/v1/auth/*', clerkMiddleware());
 app.use('/api/v1/users/*', clerkMiddleware());
 app.use('/api/v1/kyc/*', clerkMiddleware());
+app.use('/api/demo/*', clerkMiddleware());
 
 // Custom middleware
 app.use('*', rateLimiter);
@@ -85,6 +88,7 @@ api.route('/auth', authRoutes);
 api.route('/users', userRoutes);
 api.route('/kyc', kycRoutes);
 api.route('/admin', adminRoutes);
+app.route('/api/demo', demoRoutes);
 // Add other routes when created
 // api.route('/trades', tradeRoutes);
 // api.route('/wallets', walletRoutes);
@@ -101,6 +105,7 @@ app.notFound((c) => c.json({
 app.onError(errorHandler);
 
 export default {
-	port: process.env.PORT || 3000,
+	port: process.env.PORT || 3004,
 	fetch: app.fetch,
+	websocket,
 };

@@ -37,14 +37,12 @@ const registerSchema = insertUserSchema.pick({
 
 app.post('/register', zValidator('json', registerSchema), async (c) => {
 	const data = c.req.valid('json');
-	
-	// Hash password (example - use bcrypt in production)
-	const passwordHash = data.password; // TODO: Hash with bcrypt
+	const { password, ...userData } = data;
 	
 	try {
 		const [newUser] = await db.insert(users).values({
-			...data,
-			passwordHash,
+			...userData,
+			clerkId: `local_${Date.now()}`,
 			accountStatus: 'pending_kyc',
 			kycStatus: 'not_started',
 		}).returning();
