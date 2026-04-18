@@ -8,9 +8,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { useTheme } from '@/lib/hooks';
+import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { activateDemoAccount, getDemoStatus, type DemoStatus } from '@/lib/demo-api';
 import { 
   kycApi, 
   getStatusConfig, 
@@ -26,6 +27,7 @@ import {
 export default function KYCStatusScreen() {
   const theme = useTheme();
   const { getToken, isSignedIn } = useAuth();
+	const stableGetToken = useStableToken(getToken);
   const params = useLocalSearchParams<{
     sessionId?: string;
     fromWebView?: string;
@@ -35,6 +37,8 @@ export default function KYCStatusScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<KycStatusResponse | null>(null);
   const [userSummary, setUserSummary] = useState<UserKycSummary | null>(null);
+  const [demoStatus, setDemoStatus] = useState<DemoStatus | null>(null);
+  const [unlockingDemo, setUnlockingDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch status data
@@ -45,7 +49,7 @@ export default function KYCStatusScreen() {
       if (showLoading) setLoading(true);
       setError(null);
 
-      const token = await getToken();
+      const token = await stableGetToken();
       if (token) {
         kycApi.setAuthToken(token);
       }
@@ -54,6 +58,14 @@ export default function KYCStatusScreen() {
       const summaryResponse = await kycApi.getUserKycStatus();
       if (summaryResponse.success && summaryResponse.data) {
         setUserSummary(summaryResponse.data);
+      }
+
+      // Fetch demo-account eligibility for unlock CTA
+      try {
+        const nextDemoStatus = await getDemoStatus(stableGetToken);
+        setDemoStatus(nextDemoStatus);
+      } catch {
+        setDemoStatus(null);
       }
 
       // If we have a session ID, fetch specific session status
@@ -118,11 +130,32 @@ export default function KYCStatusScreen() {
     router.replace('/kyc/start' as any);
   };
 
+  const handleUnlockDemo = useCallback(async () => {
+    try {
+      setUnlockingDemo(true);
+      await activateDemoAccount(stableGetToken);
+      const nextDemoStatus = await getDemoStatus(stableGetToken);
+      setDemoStatus(nextDemoStatus);
+      Alert.alert(
+        'Demo Account Unlocked',
+        'Your demo wallet is now active with $100,000 virtual cash.'
+      );
+    } catch (err) {
+      Alert.alert(
+        'Unable to unlock demo account',
+        err instanceof Error ? err.message : 'Please try again.'
+      );
+    } finally {
+      setUnlockingDemo(false);
+    }
+  }, []);
+
   // Determine the admin approval status
   const adminApproval: AdminApprovalStatus = sessionStatus?.adminApprovalStatus || userSummary?.adminApprovalStatus || null;
 
   // Show popup when returning from WebView and Didit verification is complete
   const popupShown = useRef(false);
+  const unlockPromptShown = useRef(false);
   useEffect(() => {
     if (params.fromWebView === 'true' && !popupShown.current && sessionStatus) {
       if (sessionStatus.status === 'approved' && adminApproval === 'pending_approval') {
@@ -142,6 +175,35 @@ export default function KYCStatusScreen() {
       }
     }
   }, [params.fromWebView, sessionStatus?.status, adminApproval]);
+
+  useEffect(() => {
+    const isKycApproved = sessionStatus?.status === 'approved' || userSummary?.kycStatus === 'approved';
+    if (
+      isKycApproved &&
+      demoStatus?.canActivateDemo &&
+      !demoStatus?.hasDemoAccount &&
+      !unlockPromptShown.current
+    ) {
+      unlockPromptShown.current = true;
+      Alert.alert(
+        'Unlock Demo Account',
+        'KYC is complete. Unlock your demo account now to receive $100,000 virtual cash.',
+        [
+          { text: 'Later', style: 'cancel' },
+          {
+            text: 'Unlock now',
+            onPress: () => {
+              void handleUnlockDemo();
+            },
+          },
+        ]
+      );
+    }
+
+    if (demoStatus?.hasDemoAccount) {
+      unlockPromptShown.current = false;
+    }
+  }, [demoStatus?.canActivateDemo, demoStatus?.hasDemoAccount, handleUnlockDemo, sessionStatus?.status, userSummary?.kycStatus]);
 
   // Get current status for display
   const currentStatus: KycSessionStatus = sessionStatus?.status || 
@@ -295,6 +357,33 @@ export default function KYCStatusScreen() {
             <Card style={{ marginBottom: 16, backgroundColor: theme.colors.error + '20' }}>
               <Text style={{ color: theme.colors.error, fontSize: 14, textAlign: 'center' }}>
                 {error}
+              </Text>
+            </Card>
+          )}
+
+          {demoStatus?.canActivateDemo && !demoStatus?.hasDemoAccount && (
+            <Card style={{ marginBottom: 16, backgroundColor: theme.colors.accent.primary + '15' }}>
+              <Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
+                Unlock your demo account
+              </Text>
+              <Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 12 }}>
+                KYC is complete. Activate demo trading to receive $100,000 virtual cash.
+              </Text>
+              <Button
+                title={unlockingDemo ? 'Unlocking...' : 'Unlock Demo Account'}
+                onPress={() => {
+                  void handleUnlockDemo();
+                }}
+                disabled={unlockingDemo}
+                fullWidth
+              />
+            </Card>
+          )}
+
+          {demoStatus?.hasDemoAccount && (
+            <Card style={{ marginBottom: 16, backgroundColor: theme.colors.success + '15' }}>
+              <Text style={{ color: theme.colors.success, fontSize: 14, fontWeight: '600' }}>
+                Demo account is active. You can now paper trade with live market data.
               </Text>
             </Card>
           )}

@@ -1,294 +1,305 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Dimensions, PanResponder } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useTheme } from '@/lib/hooks';
+import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { mockAssets, mockPortfolio, generateChartData } from '@/lib/mockData';
-import { formatCurrency, formatPercentage, formatCompactNumber } from '@/lib/formatters';
-import { Svg, Path, Defs, LinearGradient as SvgGradient, Stop, Circle } from 'react-native-svg';
+import { formatCurrency, formatPercentage } from '@/lib/formatters';
+import { StockChart } from '@/components/StockChart';
+import {
+	getDemoAccount,
+	getDemoHoldings,
+	getDemoMarketData,
+	getDemoMarketHistory,
+	type ChartPeriod,
+	type DemoHolding,
+	type DemoMarketData,
+	type HistoricalBar,
+} from '@/lib/demo-api';
 
-const TIMEFRAMES = ['1H', '1D', '1W', '1M', '1Y', 'ALL'] as const;
+const toNumber = (value: string | undefined) => Number(value || 0);
 
-export default function AssetDetailScreen() {
-  const theme = useTheme();
-  const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string; symbol?: string }>();
-  const [timeframe, setTimeframe] = useState<(typeof TIMEFRAMES)[number]>('1D');
+// ─── Company name fallback ────────────────────────────────────────────────────
+const COMPANY_NAMES: Record<string, string> = {
+	AAPL: 'Apple Inc.', MSFT: 'Microsoft Corporation', NVDA: 'NVIDIA Corporation',
+	META: 'Meta Platforms Inc.', AMZN: 'Amazon.com Inc.', GOOGL: 'Alphabet Inc.',
+	TSLA: 'Tesla Inc.', AVGO: 'Broadcom Inc.', AMD: 'Advanced Micro Devices',
+	NFLX: 'Netflix Inc.', ORCL: 'Oracle Corporation', CRM: 'Salesforce Inc.',
+	ADBE: 'Adobe Inc.', INTC: 'Intel Corporation', CSCO: 'Cisco Systems',
+	QCOM: 'Qualcomm Inc.', TXN: 'Texas Instruments', IBM: 'IBM',
+	JPM: 'JPMorgan Chase & Co.', V: 'Visa Inc.', MA: 'Mastercard Inc.',
+	BAC: 'Bank of America', WFC: 'Wells Fargo & Co.', GS: 'Goldman Sachs Group',
+	MS: 'Morgan Stanley', C: 'Citigroup Inc.', PYPL: 'PayPal Holdings',
+	UNH: 'UnitedHealth Group', JNJ: 'Johnson & Johnson', LLY: 'Eli Lilly and Company',
+	ABBV: 'AbbVie Inc.', MRK: 'Merck & Co.', PFE: 'Pfizer Inc.',
+	WMT: 'Walmart Inc.', PG: 'Procter & Gamble', KO: 'The Coca-Cola Company',
+	PEP: 'PepsiCo Inc.', MCD: "McDonald's Corporation", SBUX: 'Starbucks Corporation',
+	NKE: 'Nike Inc.', DIS: 'The Walt Disney Company', COST: 'Costco Wholesale',
+	HD: 'The Home Depot', XOM: 'Exxon Mobil Corporation', CVX: 'Chevron Corporation',
+	CAT: 'Caterpillar Inc.', BA: 'Boeing Company', HON: 'Honeywell International',
+	UPS: 'United Parcel Service', GE: 'GE Vernova', T: 'AT&T Inc.',
+	VZ: 'Verizon Communications', PLTR: 'Palantir Technologies', COIN: 'Coinbase Global',
+	UBER: 'Uber Technologies', SPOT: 'Spotify Technology', SNAP: 'Snap Inc.',
+	SPY: 'SPDR S&P 500 ETF', QQQ: 'Invesco QQQ Trust', IWM: 'iShares Russell 2000 ETF',
+	GLD: 'SPDR Gold Shares', VOO: 'Vanguard S&P 500 ETF',
+};
 
-  const asset = useMemo(() => {
-    if (params.id) {
-      return mockAssets.find((a) => a.id === params.id);
-    }
-    if (params.symbol) {
-      return mockAssets.find((a) => a.symbol.toLowerCase() === params.symbol?.toLowerCase());
-    }
-    return undefined;
-  }, [params.id, params.symbol]);
-
-  const holding = useMemo(() => {
-    if (!asset) {
-      return undefined;
-    }
-    return mockPortfolio.holdings.find(
-      (h) => h.assetId === asset.id || h.symbol.toLowerCase() === asset.symbol.toLowerCase()
-    );
-  }, [asset]);
-
-  const chartData = useMemo(() => generateChartData(30, asset?.price ?? 0), [asset?.price]);
-
-  const [chartWidth, setChartWidth] = useState(() => Dimensions.get('window').width - 80);
-  const chartHeight = 220;
-
-  const { linePath, areaPath, points, stepX } = useMemo(() => {
-    if (!chartData.length || chartWidth <= 0) {
-      return { linePath: '', areaPath: '', points: [] as Array<{ x: number; y: number; data: typeof chartData[number] }>, stepX: 0 };
-    }
-
-    const closes = chartData.map((d) => d.close);
-    const maxClose = Math.max(...closes);
-    const minClose = Math.min(...closes);
-    const range = maxClose - minClose || 1;
-    const computedStepX = chartData.length === 1 ? 0 : chartWidth / (chartData.length - 1);
-
-    let line = '';
-    const computedPoints = chartData.map((point, index) => {
-      const x = index * computedStepX;
-      const y = chartHeight - ((point.close - minClose) / range) * chartHeight;
-      line += `${index === 0 ? 'M' : ' L'} ${x} ${y}`;
-      return { x, y, data: point };
-    });
-
-    const area = `${line} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
-
-    return { linePath: line, areaPath: area, points: computedPoints, stepX: computedStepX };
-  }, [chartData, chartWidth]);
-
-  const [activeIndex, setActiveIndex] = useState(() => (points.length ? points.length - 1 : 0));
-
-  useEffect(() => {
-    setActiveIndex(points.length ? points.length - 1 : 0);
-  }, [points.length]);
-
-  const clampIndex = useCallback(
-    (xPosition: number) => {
-      if (!points.length || stepX === 0) {
-        setActiveIndex(0);
-        return;
-      }
-      const idx = Math.round(xPosition / stepX);
-      const bounded = Math.max(0, Math.min(points.length - 1, idx));
-      setActiveIndex(bounded);
-    },
-    [points, stepX]
-  );
-
-  const chartResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
-        onPanResponderGrant: (evt) => {
-          clampIndex(evt.nativeEvent.locationX);
-        },
-        onPanResponderMove: (evt) => {
-          clampIndex(evt.nativeEvent.locationX);
-        },
-        onPanResponderTerminationRequest: () => false,
-        onPanResponderRelease: () => {
-          setActiveIndex(points.length ? points.length - 1 : 0);
-        },
-        onPanResponderTerminate: () => {
-          setActiveIndex(points.length ? points.length - 1 : 0);
-        },
-      }),
-    [clampIndex, points.length]
-  );
-
-  const activePoint = points[activeIndex];
-
-  const formatTimestamp = useCallback((timestamp: number) => {
-    const date = new Date(timestamp);
-    return `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
-  }, []);
-
-  if (!asset) {
-    return (
-      <LinearGradient colors={['#000000', '#051f1a', '#000000']} style={{ flex: 1 }}>
-        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <Text style={{ color: theme.colors.text.primary, fontSize: 18, marginBottom: 8 }}>
-            Asset not found
-          </Text>
-          <Button title="Go back" onPress={() => router.back()} variant="secondary" />
-        </SafeAreaView>
-      </LinearGradient>
-    );
-  }
-
-  const isPositive = asset.changePercentage24h >= 0;
-
-  return (
-    <LinearGradient colors={['#000000', '#041d16', '#000000']} style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-          <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 20 }}>
-            <Text style={{ color: theme.colors.accent.primary, fontSize: 15, fontWeight: '600' }}>{'← Back'}</Text>
-          </TouchableOpacity>
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ color: theme.colors.text.secondary, fontSize: 15, marginBottom: 4 }}>
-              {asset.name}
-            </Text>
-            <Text style={{ color: theme.colors.text.primary, fontSize: 36, fontWeight: '700' }}>
-              {asset.symbol}
-            </Text>
-          </View>
-
-          <Card style={{ marginBottom: 20, paddingVertical: 20 }}>
-            <Text style={{ color: theme.colors.text.primary, fontSize: 40, fontWeight: 'bold', fontFamily: 'RobotoMono', marginBottom: 12 }}>
-              {formatCurrency(asset.price)}
-            </Text>
-            <Text style={{ color: isPositive ? theme.colors.success : theme.colors.error, fontSize: 17, fontWeight: '600' }}>
-              {isPositive ? '▲' : '▼'} {formatCurrency(Math.abs(asset.change24h))} ({formatPercentage(asset.changePercentage24h)})
-            </Text>
-          </Card>
-
-          <Card style={{ marginBottom: 16, padding: 0 }}>
-            <View
-              style={{ height: chartHeight + 60, padding: 20, borderBottomWidth: 1, borderBottomColor: theme.colors.surface.secondary }}
-              onLayout={({ nativeEvent }) => {
-                const nextWidth = Math.max(0, nativeEvent.layout.width - 40);
-                if (nextWidth > 0 && Math.abs(nextWidth - chartWidth) > 1) {
-                  setChartWidth(nextWidth);
-                }
-              }}
-              {...chartResponder.panHandlers}
-            >
-              <Text style={{ color: theme.colors.text.primary, fontSize: 18, fontWeight: '600', marginBottom: 6 }}>
-                {activePoint ? formatCurrency(activePoint.data.close) : formatCurrency(asset.price)}
-              </Text>
-              <Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 12 }}>
-                {activePoint ? formatTimestamp(activePoint.data.timestamp) : 'Live price'}
-              </Text>
-              <Svg width={chartWidth > 0 ? chartWidth : undefined} height={chartHeight}>
-                <Defs>
-                  <SvgGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0%" stopColor={theme.colors.accent.primary} stopOpacity={0.35} />
-                    <Stop offset="100%" stopColor={theme.colors.accent.primary} stopOpacity={0.05} />
-                  </SvgGradient>
-                </Defs>
-                {areaPath ? <Path d={areaPath} fill="url(#chartGradient)" /> : null}
-                {linePath ? <Path d={linePath} stroke={theme.colors.accent.primary} strokeWidth={2} fill="none" /> : null}
-                {activePoint ? (
-                  <>
-                    <Path d={`M ${activePoint.x} 0 L ${activePoint.x} ${chartHeight}`} stroke="rgba(255,255,255,0.35)" strokeDasharray="6 6" />
-                    <Circle cx={activePoint.x} cy={activePoint.y} r={6} fill={theme.colors.accent.primary} />
-                    <Circle cx={activePoint.x} cy={activePoint.y} r={10} stroke={theme.colors.accent.primary} strokeOpacity={0.3} strokeWidth={2} fill="none" />
-                  </>
-                ) : null}
-              </Svg>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: 16 }}>
-              {TIMEFRAMES.map((tf) => (
-                <TouchableOpacity
-                  key={tf}
-                  onPress={() => setTimeframe(tf)}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 16,
-                    borderRadius: 999,
-                    backgroundColor: timeframe === tf ? theme.colors.accent.primary : 'rgba(255,255,255,0.05)',
-                    borderWidth: timeframe === tf ? 0 : 1,
-                    borderColor: 'rgba(255,255,255,0.08)',
-                  }}
-                >
-                  <Text style={{ color: timeframe === tf ? '#000000' : theme.colors.text.secondary, fontSize: 13, fontWeight: '600' }}>
-                    {tf}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Card>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 24 }}>
-            <Button title="Buy" onPress={() => {}} style={{ flex: 1 }} size="large" />
-            <Button title="Sell" onPress={() => {}} style={{ flex: 1 }} size="large" variant="danger" />
-          </View>
-
-          <Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 12 }}>
-            Market overview
-          </Text>
-          <Card style={{ marginBottom: 24 }}>
-            <StatRow label="Market cap" value={formatCompactNumber(asset.marketCap)} />
-            <StatRow label="24h volume" value={formatCompactNumber(asset.volume24h)} />
-            <StatRow label="24h high" value={formatCurrency(asset.high24h)} />
-            <StatRow label="24h low" value={formatCurrency(asset.low24h)} isLast />
-          </Card>
-
-          <Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 12 }}>
-            Your holdings
-          </Text>
-          <Card>
-            {holding ? (
-              <View style={{ gap: 12 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: theme.colors.text.secondary, fontSize: 14 }}>Amount owned</Text>
-                  <Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '600' }}>
-                    {holding.amount} {asset.symbol}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: theme.colors.text.secondary, fontSize: 14 }}>Current value</Text>
-                  <Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '600' }}>
-                    {formatCurrency(holding.value)}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: theme.colors.text.secondary, fontSize: 14 }}>Average buy price</Text>
-                  <Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '600' }}>
-                    {formatCurrency(holding.avgBuyPrice)}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: theme.colors.text.secondary, fontSize: 14 }}>Unrealized P/L</Text>
-                  <Text style={{ color: holding.gain >= 0 ? theme.colors.success : theme.colors.error, fontSize: 16, fontWeight: '600' }}>
-                    {holding.gain >= 0 ? '+' : ''}{formatCurrency(holding.gain)} ({formatPercentage(holding.gainPercentage)})
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                <Text style={{ color: theme.colors.text.secondary, fontSize: 15, textAlign: 'center', marginBottom: 12 }}>
-                  You do not hold any {asset.symbol} yet. Start building a position.
-                </Text>
-                <Button title="Buy {asset.symbol}" onPress={() => {}} />
-              </View>
-            )}
-          </Card>
-
-          <View style={{ height: 32 }} />
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
-  );
+function getCompanyName(symbol: string, quote: DemoMarketData | null): string {
+	return quote?.instrumentName || COMPANY_NAMES[symbol] || symbol;
 }
 
-type StatRowProps = {
-  label: string;
-  value: string;
-  isLast?: boolean;
-};
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
-const StatRow = ({ label, value, isLast }: StatRowProps) => {
-  const theme = useTheme();
-  return (
-    <View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12 }}>
-        <Text style={{ color: theme.colors.text.secondary, fontSize: 14 }}>{label}</Text>
-        <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: '600' }}>{value}</Text>
-      </View>
-      {!isLast && <View style={{ height: 1, backgroundColor: theme.colors.surface.secondary }} />}
-    </View>
-  );
-};
+export default function AssetDetailScreen() {
+	const theme  = useTheme();
+	const router = useRouter();
+	const { getToken, isSignedIn } = useAuth();
+	const stableGetToken = useStableToken(getToken);
+	const params = useLocalSearchParams<{ symbol?: string; id?: string }>();
+	const symbol = String(params.symbol || params.id || '').toUpperCase();
+
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError]         = useState<string | null>(null);
+	const [quote, setQuote]         = useState<DemoMarketData | null>(null);
+	const [holding, setHolding]     = useState<DemoHolding | null>(null);
+
+	const [chartPeriod, setChartPeriod]   = useState<ChartPeriod>('1M');
+	const [chartBars, setChartBars]       = useState<HistoricalBar[]>([]);
+	const [chartLoading, setChartLoading] = useState(false);
+
+	// ── Load quote + holdings ──────────────────────────────────────────────────
+	const loadDetails = useCallback(async () => {
+		if (!symbol || !isSignedIn) { setIsLoading(false); return; }
+		try {
+			setIsLoading(true);
+			const marketQuote = await getDemoMarketData(symbol, stableGetToken);
+			setQuote(marketQuote);
+			try {
+				const account  = await getDemoAccount(stableGetToken);
+				const holdings = await getDemoHoldings(account.userId, stableGetToken);
+				setHolding(holdings.holdings.find((item) => item.symbol === symbol) || null);
+			} catch {
+				setHolding(null);
+			}
+			setError(null);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Unable to load asset detail.');
+		} finally {
+			setIsLoading(false);
+		}
+	}, [isSignedIn, symbol]);
+
+	useEffect(() => { void loadDetails(); }, [loadDetails]);
+
+	// ── Load chart bars ────────────────────────────────────────────────────────
+	const loadChart = useCallback(async (period: ChartPeriod) => {
+		if (!symbol || !isSignedIn) return;
+		try {
+			setChartLoading(true);
+			const history = await getDemoMarketHistory(symbol, period, stableGetToken);
+			setChartBars(history.bars);
+		} catch {
+			setChartBars([]);
+		} finally {
+			setChartLoading(false);
+		}
+	}, [isSignedIn, symbol]);
+
+	useEffect(() => { void loadChart(chartPeriod); }, [loadChart, chartPeriod]);
+
+	const handlePeriodChange = useCallback((p: ChartPeriod) => {
+		setChartPeriod(p);
+	}, []);
+
+	const isPositive  = useMemo(() => toNumber(holding?.pnlPercent) >= 0, [holding?.pnlPercent]);
+	const companyName = getCompanyName(symbol, quote);
+
+	if (!symbol) {
+		return (
+			<LinearGradient colors={['#000000', '#051f1a', '#000000']} style={{ flex: 1 }}>
+				<SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+					<Text style={{ color: theme.colors.text.primary, fontSize: 18, marginBottom: 8 }}>
+						Asset symbol is missing
+					</Text>
+					<Button title="Go back" onPress={() => router.back()} variant="secondary" />
+				</SafeAreaView>
+			</LinearGradient>
+		);
+	}
+
+	return (
+		<LinearGradient colors={['#000000', '#041d16', '#000000']} style={{ flex: 1 }}>
+			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+				<ScrollView
+					contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+					showsVerticalScrollIndicator={false}
+				>
+					{/* ── Back ─────────────────────────────────────────────────── */}
+					<TouchableOpacity
+						onPress={() => router.back()}
+						style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 20 }}
+					>
+						<Ionicons name="chevron-back" size={20} color={theme.colors.accent.primary} />
+						<Text style={{ color: theme.colors.accent.primary, fontSize: 15, fontWeight: '600', marginLeft: 2 }}>
+							Markets
+						</Text>
+					</TouchableOpacity>
+
+					{/* ── Header: company name + price ─────────────────────────── */}
+					<View style={{ marginBottom: 20 }}>
+						<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+							<View style={{
+								paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+								backgroundColor: 'rgba(16,185,129,0.1)',
+								borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)',
+							}}>
+								<Text style={{ color: '#10B981', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }}>
+									{symbol}
+								</Text>
+							</View>
+							{quote && (
+								<Text style={{ color: '#4B5563', fontSize: 12 }}>
+									{quote.exchange} · {quote.marketDataFeed}
+								</Text>
+							)}
+						</View>
+						<Text style={{ color: theme.colors.text.primary, fontSize: 22, fontWeight: '700', marginBottom: 6 }}>
+							{companyName}
+						</Text>
+						<Text style={{
+							color: theme.colors.text.primary,
+							fontSize: 38, fontWeight: '800', fontFamily: 'RobotoMono', letterSpacing: -1,
+						}}>
+							{quote ? formatCurrency(toNumber(quote.lastPrice)) : (isLoading ? '...' : '--')}
+						</Text>
+						{error && !isLoading && (
+							<View style={{
+								marginTop: 8, padding: 10, borderRadius: 10,
+								backgroundColor: 'rgba(239,68,68,0.12)',
+							}}>
+								<Text style={{ color: '#FCA5A5', fontSize: 13 }}>{error}</Text>
+							</View>
+						)}
+					</View>
+
+					{/* ── Chart ────────────────────────────────────────────────── */}
+					<Card style={{ marginBottom: 20, paddingVertical: 16, paddingHorizontal: 10 }}>
+						<StockChart
+							bars={chartBars}
+							isLoading={chartLoading}
+							period={chartPeriod}
+							onPeriodChange={handlePeriodChange}
+						/>
+					</Card>
+
+					{/* ── Buy / Sell buttons ───────────────────────────────────── */}
+					<View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
+						<TouchableOpacity
+							activeOpacity={0.85}
+							onPress={() => router.push({ pathname: '/orders/order-form', params: { symbol, side: 'buy' } })}
+							style={{
+								flex: 1, paddingVertical: 16, borderRadius: 16,
+								backgroundColor: '#10B981',
+								alignItems: 'center', justifyContent: 'center',
+								flexDirection: 'row', gap: 8,
+							}}
+						>
+							<Ionicons name="trending-up" size={18} color="#FFFFFF" />
+							<Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', letterSpacing: 0.3 }}>
+								Buy
+							</Text>
+						</TouchableOpacity>
+
+						<TouchableOpacity
+							activeOpacity={0.85}
+							onPress={() => router.push({ pathname: '/orders/order-form', params: { symbol, side: 'sell' } })}
+							style={{
+								flex: 1, paddingVertical: 16, borderRadius: 16,
+								backgroundColor: '#EF4444',
+								alignItems: 'center', justifyContent: 'center',
+								flexDirection: 'row', gap: 8,
+							}}
+						>
+							<Ionicons name="trending-down" size={18} color="#FFFFFF" />
+							<Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', letterSpacing: 0.3 }}>
+								Sell
+							</Text>
+						</TouchableOpacity>
+					</View>
+
+					{/* ── Your position ────────────────────────────────────────── */}
+					<Text style={{ color: theme.colors.text.primary, fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
+						Your Position
+					</Text>
+					<Card>
+						{isLoading ? (
+							<Text style={{ color: theme.colors.text.secondary }}>Loading...</Text>
+						) : holding ? (
+							<View style={{ gap: 12 }}>
+								<StatRow label="Quantity"      value={holding.quantity} />
+								<StatRow label="Average price" value={formatCurrency(toNumber(holding.avgPrice))} />
+								<StatRow label="Current price" value={formatCurrency(toNumber(holding.currentPrice))} />
+								<StatRow label="Market value"  value={formatCurrency(toNumber(holding.marketValue))} />
+								<StatRow
+									label="Unrealized P/L"
+									value={`${formatCurrency(toNumber(holding.pnlAmount))} (${formatPercentage(toNumber(holding.pnlPercent))})`}
+									valueColor={isPositive ? theme.colors.success : theme.colors.error}
+									isLast
+								/>
+							</View>
+						) : (
+							<View style={{ alignItems: 'center', paddingVertical: 20 }}>
+								<Text style={{ color: theme.colors.text.secondary, fontSize: 14, textAlign: 'center', marginBottom: 14 }}>
+									You don't hold any {symbol} yet.
+								</Text>
+								<TouchableOpacity
+									onPress={() => router.push({ pathname: '/orders/order-form', params: { symbol, side: 'buy' } })}
+									style={{
+										paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
+										backgroundColor: 'rgba(16,185,129,0.15)',
+										borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)',
+									}}
+								>
+									<Text style={{ color: '#10B981', fontWeight: '600', fontSize: 14 }}>
+										Buy {symbol}
+									</Text>
+								</TouchableOpacity>
+							</View>
+						)}
+					</Card>
+				</ScrollView>
+			</SafeAreaView>
+		</LinearGradient>
+	);
+}
+
+// ─── Stat row ─────────────────────────────────────────────────────────────────
+
+function StatRow({
+	label,
+	value,
+	valueColor,
+	isLast,
+}: {
+	label: string;
+	value: string;
+	valueColor?: string;
+	isLast?: boolean;
+}) {
+	const theme = useTheme();
+	return (
+		<View>
+			<View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 }}>
+				<Text style={{ color: theme.colors.text.secondary, fontSize: 14 }}>{label}</Text>
+				<Text style={{ color: valueColor || theme.colors.text.primary, fontSize: 15, fontWeight: '600' }}>
+					{value}
+				</Text>
+			</View>
+			{!isLast && <View style={{ height: 1, backgroundColor: theme.colors.surface.secondary }} />}
+		</View>
+	);
+}

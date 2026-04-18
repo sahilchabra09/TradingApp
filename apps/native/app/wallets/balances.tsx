@@ -1,85 +1,175 @@
-/**
- * Wallet Balances Screen
- */
-import { View, Text, ScrollView } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '@/lib/hooks';
-import { Card } from '@/components/Card';
-import { Button } from '@/components/Button';
+import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { mockWallets } from '@/lib/mockData';
-import { formatCurrency, formatCryptoAmount } from '@/lib/formatters';
+import {
+	getDemoAccount,
+	getDemoHoldings,
+	getDemoPortfolio,
+	getDemoStatus,
+	type DemoHoldingsResponse,
+	type DemoPortfolioResponse,
+	type DemoStatus,
+} from '@/lib/demo-api';
+import { Button } from '@/components/Button';
+import { formatCurrency } from '@/lib/formatters';
+import { useTheme, useStableToken } from '@/lib/hooks';
+
+const toNumber = (value: string | undefined) => Number(value || 0);
+
+type WalletState = {
+	status: DemoStatus | null;
+	portfolio: DemoPortfolioResponse | null;
+	holdings: DemoHoldingsResponse | null;
+};
 
 export default function WalletBalancesScreen() {
-  const theme = useTheme();
+	const theme = useTheme();
+	const { getToken, isSignedIn } = useAuth();
+	const stableGetToken = useStableToken(getToken);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const [state, setState] = useState<WalletState>({
+		status: null,
+		portfolio: null,
+		holdings: null,
+	});
 
-  return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        {/* Modern Balance Card */}
-        <View style={{ 
-          backgroundColor: 'rgba(16, 185, 129, 0.1)', 
-          borderRadius: 24, 
-          padding: 28, 
-          marginBottom: 20,
-          borderWidth: 1.5,
-          borderColor: 'rgba(16, 185, 129, 0.3)',
-        }}>
-          {/* Card Icon */}
-          <View style={{ marginBottom: 24 }}>
-            <Ionicons name="wallet" size={40} color={theme.colors.accent.primary} />
-          </View>
-          
-          {/* Balance */}
-          <Text style={{ color: '#9CA3AF', fontSize: 13, letterSpacing: 0.5, marginBottom: 8, fontWeight: '600' }}>Total Balance</Text>
-          <Text style={{ color: '#FFFFFF', fontSize: 42, fontWeight: 'bold', letterSpacing: -0.5, marginBottom: 8 }}>
-            {formatCurrency(mockWallets.reduce((sum, w) => sum + w.balance, 0))}
-          </Text>
-          
-          {/* Gain Info */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-            <Ionicons name="trending-up" size={16} color={theme.colors.success} />
-            <Text style={{ color: theme.colors.success, fontSize: 14, fontWeight: '600', marginLeft: 6 }}>
-              +2.4% this month
-            </Text>
-          </View>
-        </View>
+	const loadWallets = useCallback(async () => {
+		if (!isSignedIn) {
+			setIsLoading(false);
+			return;
+		}
 
-        {/* Buttons Below Card */}
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
-          <Button title="Deposit" onPress={() => {}} style={{ flex: 1 }} />
-          <Button title="Withdraw" onPress={() => {}} style={{ flex: 1 }} />
-        </View>
+		try {
+			setIsLoading(true);
+			const status = await getDemoStatus(stableGetToken);
+			if (!status.hasDemoAccount) {
+				setState({ status, portfolio: null, holdings: null });
+				setError(null);
+				return;
+			}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          <Ionicons name="wallet-outline" size={24} color={theme.colors.text.primary} style={{ marginRight: 8 }} />
-          <Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700' }}>Your Wallets</Text>
-        </View>
+			const account = await getDemoAccount(stableGetToken);
+			const [portfolio, holdings] = await Promise.all([
+				getDemoPortfolio(account.userId, stableGetToken),
+				getDemoHoldings(account.userId, stableGetToken),
+			]);
+			setState({ status, portfolio, holdings });
+			setError(null);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Unable to load wallet balances.');
+		} finally {
+			setIsLoading(false);
+		}
+	}, [isSignedIn]);
 
-        {mockWallets.map((wallet) => (
-          <View key={wallet.id} style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                  <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', marginRight: 8 }}>{wallet.currency}</Text>
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, backgroundColor: wallet.type === 'fiat' ? theme.colors.accent.primary + '20' : theme.colors.accent.secondary + '20' }}>
-                    <Text style={{ color: wallet.type === 'fiat' ? theme.colors.accent.primary : theme.colors.accent.secondary, fontSize: 11, fontWeight: '600' }}>
-                      {wallet.type.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
-                  {wallet.type === 'crypto' ? formatCryptoAmount(wallet.balance / 50000, wallet.currency) : formatCurrency(wallet.balance)}
-                </Text>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '600', fontFamily: 'RobotoMono' }}>{formatCurrency(wallet.balance)}</Text>
-                {wallet.type === 'crypto' && <Text style={{ color: theme.colors.text.tertiary, fontSize: 11, marginTop: 2 }}>0x1234...5678</Text>}
-              </View>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
-  );
+	useEffect(() => {
+		void loadWallets();
+	}, [loadWallets]);
+
+	const totals = useMemo(() => {
+		const cash = toNumber(state.portfolio?.cash);
+		const holdingsValue = toNumber(state.portfolio?.holdingsValue);
+		return {
+			cash,
+			holdingsValue,
+			total: cash + holdingsValue,
+		};
+	}, [state.portfolio?.cash, state.portfolio?.holdingsValue]);
+
+	return (
+		<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+			<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+				<View
+					style={{
+						backgroundColor: 'rgba(16, 185, 129, 0.1)',
+						borderRadius: 24,
+						padding: 28,
+						marginBottom: 20,
+						borderWidth: 1.5,
+						borderColor: 'rgba(16, 185, 129, 0.3)',
+					}}
+				>
+					<View style={{ marginBottom: 24 }}>
+						<Ionicons name="wallet" size={40} color={theme.colors.accent.primary} />
+					</View>
+					<Text style={{ color: '#9CA3AF', fontSize: 13, letterSpacing: 0.5, marginBottom: 8, fontWeight: '600' }}>
+						Total Balance
+					</Text>
+					{isLoading ? (
+						<ActivityIndicator color={theme.colors.accent.primary} />
+					) : (
+						<Text style={{ color: '#FFFFFF', fontSize: 42, fontWeight: 'bold', letterSpacing: -0.5, marginBottom: 8 }}>
+							{state.portfolio ? formatCurrency(totals.total) : '--'}
+						</Text>
+					)}
+					<Text style={{ color: theme.colors.success, fontSize: 14, fontWeight: '600', marginTop: 4 }}>
+						Live demo balance
+					</Text>
+				</View>
+
+				<View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
+					<Button title="Deposit" onPress={() => {}} style={{ flex: 1 }} />
+					<Button title="Withdraw" onPress={() => {}} style={{ flex: 1 }} />
+				</View>
+
+				{error ? (
+					<View
+						style={{
+							backgroundColor: 'rgba(239, 68, 68, 0.1)',
+							borderColor: 'rgba(239,68,68,0.25)',
+							borderWidth: 1,
+							borderRadius: 12,
+							padding: 12,
+							marginBottom: 16,
+						}}
+					>
+						<Text style={{ color: '#FCA5A5' }}>{error}</Text>
+					</View>
+				) : null}
+
+				<View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+					<Ionicons name="wallet-outline" size={24} color={theme.colors.text.primary} style={{ marginRight: 8 }} />
+					<Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700' }}>Wallet Breakdown</Text>
+				</View>
+
+				<View
+					style={{
+						backgroundColor: 'rgba(255, 255, 255, 0.05)',
+						borderRadius: 16,
+						padding: 16,
+						marginBottom: 12,
+						borderWidth: 1,
+						borderColor: 'rgba(255, 255, 255, 0.1)',
+					}}
+				>
+					<Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 6 }}>Cash</Text>
+					<Text style={{ color: theme.colors.text.primary, fontSize: 22, fontWeight: '700' }}>
+						{state.portfolio ? formatCurrency(totals.cash) : '--'}
+					</Text>
+				</View>
+
+				<View
+					style={{
+						backgroundColor: 'rgba(255, 255, 255, 0.05)',
+						borderRadius: 16,
+						padding: 16,
+						marginBottom: 12,
+						borderWidth: 1,
+						borderColor: 'rgba(255, 255, 255, 0.1)',
+					}}
+				>
+					<Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 6 }}>Holdings Value</Text>
+					<Text style={{ color: theme.colors.text.primary, fontSize: 22, fontWeight: '700' }}>
+						{state.portfolio ? formatCurrency(totals.holdingsValue) : '--'}
+					</Text>
+					<Text style={{ color: theme.colors.text.tertiary, marginTop: 6, fontSize: 12 }}>
+						{state.holdings?.holdings.length || 0} open positions
+					</Text>
+				</View>
+			</ScrollView>
+		</SafeAreaView>
+	);
 }

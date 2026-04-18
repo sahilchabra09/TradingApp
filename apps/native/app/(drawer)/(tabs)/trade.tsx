@@ -1,57 +1,121 @@
-/**
- * Trade Screen
- */
-import { View, Text, ScrollView } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@clerk/clerk-expo';
 import { useTheme } from '@/lib/hooks';
+import { useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
+import { getDemoMarketData, type DemoMarketData } from '@/lib/demo-api';
+import { formatCurrency } from '@/lib/formatters';
+
+const QUICK_SYMBOLS = ['AAPL', 'TSLA', 'SPY', 'QQQ'] as const;
+const toNumber = (value: string | undefined) => Number(value || 0);
 
 export default function TradeScreen() {
-  const theme = useTheme();
-  const [amount, setAmount] = useState('');
-  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
+	const theme = useTheme();
+	const router = useRouter();
+	const { getToken, isSignedIn } = useAuth();
+	const stableGetToken = useStableToken(getToken);
+	const [selectedSymbol, setSelectedSymbol] = useState<string>('AAPL');
+	const [quote, setQuote] = useState<DemoMarketData | null>(null);
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  return (
-    <LinearGradient
-      colors={['#000000', '#0a3d2e', '#000000']}
-      locations={[0, 0.5, 1]}
-      style={{ flex: 1 }}
-    >
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 16 }}>Quick Trade</Text>
+	const loadQuote = useCallback(async () => {
+		if (!isSignedIn || !selectedSymbol) {
+			return;
+		}
 
-        <Card style={{ marginBottom: 16 }}>
-          <Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 8 }}>Select Asset</Text>
-          <Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: 'bold' }}>BTC - Bitcoin</Text>
-          <Text style={{ color: theme.colors.text.primary, fontSize: 17, marginTop: 4 }}>$45,320.50</Text>
-        </Card>
+		try {
+			setIsLoading(true);
+			const nextQuote = await getDemoMarketData(selectedSymbol, stableGetToken);
+			setQuote(nextQuote);
+			setError(null);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Unable to load live quote.');
+			setQuote(null);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [isSignedIn, selectedSymbol]);
 
-        <View style={{ flexDirection: 'row', marginBottom: 16 }}>
-          <Button title="Buy" onPress={() => setTradeType('buy')} style={{ flex: 1, marginRight: 8 }} />
-          <Button title="Sell" onPress={() => setTradeType('sell')} style={{ flex: 1, marginLeft: 8 }} />
-        </View>
+	useEffect(() => {
+		void loadQuote();
+	}, [loadQuote]);
 
-        <Input label="Amount" value={amount} onChangeText={setAmount} placeholder="0.00" keyboardType="numeric" />
+	return (
+		<LinearGradient colors={['#000000', '#0a3d2e', '#000000']} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
+			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+				<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+					<Text style={{ fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 16 }}>Quick Trade</Text>
 
-        <Card style={{ marginTop: 16, marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text style={{ color: theme.colors.text.secondary }}>Est. Total</Text>
-            <Text style={{ color: theme.colors.text.primary, fontWeight: '600' }}>$0.00</Text>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={{ color: theme.colors.text.secondary }}>Fee</Text>
-            <Text style={{ color: theme.colors.text.primary, fontWeight: '600' }}>$0.00</Text>
-          </View>
-        </Card>
+					<View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
+						{QUICK_SYMBOLS.map((symbol) => (
+							<TouchableOpacity
+								key={symbol}
+								onPress={() => setSelectedSymbol(symbol)}
+								style={{
+									paddingHorizontal: 14,
+									paddingVertical: 8,
+									borderRadius: 999,
+									backgroundColor:
+										selectedSymbol === symbol ? theme.colors.accent.primary : 'rgba(255,255,255,0.08)',
+									marginRight: 8,
+									marginBottom: 8,
+								}}
+							>
+								<Text
+									style={{
+										color: selectedSymbol === symbol ? '#031108' : '#FFFFFF',
+										fontSize: 13,
+										fontWeight: '700',
+									}}
+								>
+									{symbol}
+								</Text>
+							</TouchableOpacity>
+						))}
+					</View>
 
-        <Button title={`${tradeType === 'buy' ? 'Buy' : 'Sell'} BTC`} onPress={() => {}} fullWidth />
-      </ScrollView>
-    </SafeAreaView>
-    </LinearGradient>
-  );
+					<Card style={{ marginBottom: 16 }}>
+						{isLoading ? (
+							<View style={{ alignItems: 'center', paddingVertical: 8 }}>
+								<ActivityIndicator color={theme.colors.accent.primary} />
+								<Text style={{ color: theme.colors.text.secondary, marginTop: 10 }}>Loading live quote...</Text>
+							</View>
+						) : error ? (
+							<Text style={{ color: theme.colors.error }}>{error}</Text>
+						) : (
+							<>
+								<Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 8 }}>Selected Asset</Text>
+								<Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: 'bold' }}>
+									{quote?.symbol || selectedSymbol} {quote?.instrumentName ? `- ${quote.instrumentName}` : ''}
+								</Text>
+								<Text style={{ color: theme.colors.text.primary, fontSize: 17, marginTop: 4 }}>
+									{quote ? formatCurrency(toNumber(quote.lastPrice)) : '--'}
+								</Text>
+								<Text style={{ color: theme.colors.text.tertiary, fontSize: 12, marginTop: 8 }}>
+									{quote ? `${quote.exchange} · ${quote.lastPriceSource}` : 'No quote'}
+								</Text>
+							</>
+						)}
+					</Card>
+
+					<Button
+						title={`Trade ${selectedSymbol}`}
+						onPress={() =>
+							router.push({
+								pathname: '/orders/order-form',
+								params: { symbol: selectedSymbol },
+							})
+						}
+						fullWidth
+					/>
+				</ScrollView>
+			</SafeAreaView>
+		</LinearGradient>
+	);
 }
