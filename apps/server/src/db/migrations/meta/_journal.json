@@ -15,6 +15,27 @@
       "when": 1761946564136,
       "tag": "0001_fast_stature",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773572400000,
+      "tag": "0002_demo_paper_trading",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773577800000,
+      "tag": "0003_demo_cloud_flow",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773581400000,
+      "tag": "0004_alpaca_provider_ids",
+      "breakpoints": true
     }
   ]
 }

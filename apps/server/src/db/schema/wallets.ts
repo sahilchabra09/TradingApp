@@ -82,7 +82,3 @@ export const selectWalletSchema = createSelectSchema(wallets);
 // Type inference
 export type Wallet = typeof wallets.$inferSelect;
 export type NewWallet = typeof wallets.$inferInsert;
-
-// Forward declarations for relations
-declare const withdrawalRequests: any;
-declare const depositTransactions: any;

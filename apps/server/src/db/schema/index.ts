@@ -20,3 +20,4 @@ export * from './sessions';
 export * from './alerts';
 export * from './compliance';
 export * from './payments';
+export * from './demo';

@@ -50,6 +50,12 @@ export const riskProfileEnum = pgEnum('risk_profile', [
 	'aggressive',
 ]);
 
+export const accountTypeEnum = pgEnum('account_type', [
+	'market_data_only',
+	'demo_trader',
+	'live_trader',
+]);
+
 export const users = pgTable('users', {
 	id: uuid('id').defaultRandom().primaryKey(),
 	
@@ -76,6 +82,7 @@ export const users = pgTable('users', {
 	// Account Status - FSC Mauritius Compliance
 	accountStatus: accountStatusEnum('account_status').notNull().default('pending_kyc'),
 	kycStatus: kycStatusEnum('kyc_status').notNull().default('not_started'),
+	accountType: accountTypeEnum('account_type').notNull().default('market_data_only'),
 	
 	// Security
 	twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
@@ -100,6 +107,7 @@ export const users = pgTable('users', {
 	emailIdx: index('users_email_idx').on(table.email),
 	accountStatusIdx: index('users_account_status_idx').on(table.accountStatus),
 	kycStatusIdx: index('users_kyc_status_idx').on(table.kycStatus),
+	accountTypeIdx: index('users_account_type_idx').on(table.accountType),
 	createdAtIdx: index('users_created_at_idx').on(table.createdAt),
 }));
 
@@ -124,6 +132,7 @@ export const insertUserSchema = createInsertSchema(users, {
 	nationality: z.string().length(3, 'Nationality must be ISO 3166-1 alpha-3 code').optional(),
 	firstName: z.string().min(1).max(100),
 	lastName: z.string().min(1).max(100),
+	accountType: z.enum(['market_data_only', 'demo_trader', 'live_trader']).optional(),
 });
 
 export const selectUserSchema = createSelectSchema(users);
@@ -138,4 +147,3 @@ export const publicUserSchema = selectUserSchema.omit({
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type PublicUser = z.infer<typeof publicUserSchema>;
-
