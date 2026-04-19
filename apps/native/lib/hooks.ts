@@ -6,7 +6,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Animated, Keyboard } from 'react-native';
 import { useColorScheme as useNativeColorScheme } from 'react-native';
 import { lightTheme, darkTheme, type Theme } from './theme';
-import type { DemoMarketData } from './demo-api';
+import type { PaperMarketData } from './paper-api';
 
 /**
  * Hook to get the current theme
@@ -280,11 +280,11 @@ type LiveQuoteUpdate = {
 	source?: 'websocket' | 'rest';
 };
 
-type UseDemoMarketStreamOptions = {
+type UsePaperMarketStreamOptions = {
 	enabled?: boolean;
 	symbols?: string[];
 	getToken: () => Promise<string | null>;
-	onSnapshot?: (quote: DemoMarketData) => void;
+	onSnapshot?: (quote: PaperMarketData) => void;
 	onQuote?: (quote: LiveQuoteUpdate) => void;
 	onError?: (message: string) => void;
 	onReady?: () => void;
@@ -307,14 +307,14 @@ function toWebSocketBaseUrl(rawBaseUrl: string) {
 	return `ws://${normalized}`;
 }
 
-const DEMO_STREAM_BASE_URL = toWebSocketBaseUrl(
+const PAPER_STREAM_BASE_URL = toWebSocketBaseUrl(
 	process.env.EXPO_PUBLIC_SERVER_URL || 'http://localhost:3000'
 );
 
 /**
- * Maintains a realtime websocket stream for demo market data updates.
+ * Maintains a realtime websocket stream for paper trading market data updates.
  */
-export const useDemoMarketStream = ({
+export const usePaperMarketStream = ({
 	enabled = true,
 	symbols = [],
 	getToken,
@@ -322,7 +322,7 @@ export const useDemoMarketStream = ({
 	onQuote,
 	onError,
 	onReady,
-}: UseDemoMarketStreamOptions) => {
+}: UsePaperMarketStreamOptions) => {
 	const socketRef = useRef<WebSocket | null>(null);
 	const callbacksRef = useRef({
 		onSnapshot,
@@ -378,7 +378,7 @@ export const useDemoMarketStream = ({
 				return;
 			}
 
-			const streamUrl = `${DEMO_STREAM_BASE_URL}/api/demo/stream?symbols=${encodeURIComponent(symbolsParam)}`;
+			const streamUrl = `${PAPER_STREAM_BASE_URL}/api/paper-trading/stream?symbols=${encodeURIComponent(symbolsParam)}`;
 			const socket = new (WebSocket as any)(
 				streamUrl,
 				undefined,
@@ -399,11 +399,11 @@ export const useDemoMarketStream = ({
 				}
 
 				try {
-					const message = JSON.parse(event.data) as {
-						type?: string;
-						quote?: DemoMarketData | LiveQuoteUpdate;
-						message?: string;
-					};
+				const message = JSON.parse(event.data) as {
+					type?: string;
+					quote?: PaperMarketData | LiveQuoteUpdate;
+					message?: string;
+				};
 
 					setLastMessageAt(new Date());
 					switch (message.type) {
@@ -412,7 +412,7 @@ export const useDemoMarketStream = ({
 							return;
 						case 'snapshot':
 							if (message.quote) {
-								callbacksRef.current.onSnapshot?.(message.quote as DemoMarketData);
+								callbacksRef.current.onSnapshot?.(message.quote as PaperMarketData);
 							}
 							return;
 						case 'quote':

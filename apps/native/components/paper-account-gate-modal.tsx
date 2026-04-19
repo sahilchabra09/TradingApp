@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { router, usePathname } from 'expo-router';
-import { activateDemoAccount, getDemoStatus, type DemoStatus } from '@/lib/demo-api';
+import { activatePaperAccount, getPaperStatus, type PaperStatus } from '@/lib/paper-api';
 import { useStableToken } from '@/lib/hooks';
 
 type Step = 'kyc_required' | 'unlock_demo' | null;
 
-export function DemoAccountGateModal() {
+export function PaperAccountGateModal() {
 	const { isSignedIn, getToken } = useAuth();
 	const stableGetToken = useStableToken(getToken);
 	const pathname = usePathname();
-	const [status, setStatus] = useState<DemoStatus | null>(null);
+	const [status, setStatus] = useState<PaperStatus | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isUnlocking, setIsUnlocking] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -25,11 +25,11 @@ export function DemoAccountGateModal() {
 
 		try {
 			setIsLoading(true);
-			const nextStatus = await getDemoStatus(stableGetToken);
+			const nextStatus = await getPaperStatus(stableGetToken);
 			setStatus(nextStatus);
 			setError(null);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Unable to check demo account status.');
+			setError(err instanceof Error ? err.message : 'Unable to check paper trading account status.');
 		} finally {
 			setIsLoading(false);
 		}
@@ -73,10 +73,10 @@ export function DemoAccountGateModal() {
 		if (step === 'unlock_demo') {
 			try {
 				setIsUnlocking(true);
-				await activateDemoAccount(stableGetToken);
+				await activatePaperAccount(stableGetToken);
 				await refreshStatus();
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Unable to unlock demo account.');
+				setError(err instanceof Error ? err.message : 'Unable to unlock paper trading account.');
 			} finally {
 				setIsUnlocking(false);
 			}
@@ -91,9 +91,9 @@ export function DemoAccountGateModal() {
 		<Modal transparent animationType="fade" visible>
 			<View className="flex-1 items-center justify-center bg-black/65 px-6">
 				<View className="w-full max-w-[380px] rounded-3xl border border-emerald-400/30 bg-[#06140d] px-5 py-5">
-					<Text className="text-xs uppercase tracking-[1.6px] text-[#7BAA88]">
-						Demo Account Setup
-					</Text>
+				<Text className="text-xs uppercase tracking-[1.6px] text-[#7BAA88]">
+					Paper Trading Setup
+				</Text>
 					<Text className="mt-2 text-2xl font-bold text-[#E6F8EA]">
 						{step === 'kyc_required'
 							? 'Complete KYC to unlock demo trading'
@@ -130,7 +130,7 @@ export function DemoAccountGateModal() {
 								<ActivityIndicator color="#031108" />
 							) : (
 								<Text className="text-sm font-semibold text-[#031108]">
-									{step === 'kyc_required' ? 'Go to KYC' : 'Unlock Demo'}
+									{step === 'kyc_required' ? 'Go to KYC' : 'Unlock Paper Trading'}
 								</Text>
 							)}
 						</Pressable>

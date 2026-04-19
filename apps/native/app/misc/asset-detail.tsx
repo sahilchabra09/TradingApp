@@ -11,15 +11,15 @@ import { Button } from '@/components/Button';
 import { formatCurrency, formatPercentage } from '@/lib/formatters';
 import { StockChart } from '@/components/StockChart';
 import {
-	getDemoAccount,
-	getDemoHoldings,
-	getDemoMarketData,
-	getDemoMarketHistory,
+	getPaperAccount,
+	getPaperHoldings,
+	getPaperMarketData,
+	getPaperMarketHistory,
 	type ChartPeriod,
-	type DemoHolding,
-	type DemoMarketData,
+	type PaperHolding,
+	type PaperMarketData,
 	type HistoricalBar,
-} from '@/lib/demo-api';
+} from '@/lib/paper-api';
 
 const toNumber = (value: string | undefined) => Number(value || 0);
 
@@ -48,7 +48,7 @@ const COMPANY_NAMES: Record<string, string> = {
 	GLD: 'SPDR Gold Shares', VOO: 'Vanguard S&P 500 ETF',
 };
 
-function getCompanyName(symbol: string, quote: DemoMarketData | null): string {
+function getCompanyName(symbol: string, quote: PaperMarketData | null): string {
 	return quote?.instrumentName || COMPANY_NAMES[symbol] || symbol;
 }
 
@@ -64,8 +64,8 @@ export default function AssetDetailScreen() {
 
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError]         = useState<string | null>(null);
-	const [quote, setQuote]         = useState<DemoMarketData | null>(null);
-	const [holding, setHolding]     = useState<DemoHolding | null>(null);
+	const [quote, setQuote]         = useState<PaperMarketData | null>(null);
+	const [holding, setHolding]     = useState<PaperHolding | null>(null);
 
 	const [chartPeriod, setChartPeriod]   = useState<ChartPeriod>('1M');
 	const [chartBars, setChartBars]       = useState<HistoricalBar[]>([]);
@@ -76,11 +76,11 @@ export default function AssetDetailScreen() {
 		if (!symbol || !isSignedIn) { setIsLoading(false); return; }
 		try {
 			setIsLoading(true);
-			const marketQuote = await getDemoMarketData(symbol, stableGetToken);
+			const marketQuote = await getPaperMarketData(symbol, stableGetToken);
 			setQuote(marketQuote);
 			try {
-				const account  = await getDemoAccount(stableGetToken);
-				const holdings = await getDemoHoldings(account.userId, stableGetToken);
+				const account  = await getPaperAccount(stableGetToken);
+				const holdings = await getPaperHoldings(account.userId, stableGetToken);
 				setHolding(holdings.holdings.find((item) => item.symbol === symbol) || null);
 			} catch {
 				setHolding(null);
@@ -100,7 +100,7 @@ export default function AssetDetailScreen() {
 		if (!symbol || !isSignedIn) return;
 		try {
 			setChartLoading(true);
-			const history = await getDemoMarketHistory(symbol, period, stableGetToken);
+			const history = await getPaperMarketHistory(symbol, period, stableGetToken);
 			setChartBars(history.bars);
 		} catch {
 			setChartBars([]);

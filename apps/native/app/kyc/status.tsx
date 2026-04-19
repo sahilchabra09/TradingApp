@@ -11,7 +11,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { activateDemoAccount, getDemoStatus, type DemoStatus } from '@/lib/demo-api';
+import { activatePaperAccount, getPaperStatus, type PaperStatus } from '@/lib/paper-api';
 import { 
   kycApi, 
   getStatusConfig, 
@@ -37,8 +37,8 @@ export default function KYCStatusScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<KycStatusResponse | null>(null);
   const [userSummary, setUserSummary] = useState<UserKycSummary | null>(null);
-  const [demoStatus, setDemoStatus] = useState<DemoStatus | null>(null);
-  const [unlockingDemo, setUnlockingDemo] = useState(false);
+  const [paperStatus, setPaperStatus] = useState<PaperStatus | null>(null);
+  const [unlockingPaper, setUnlockingPaper] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch status data
@@ -62,10 +62,10 @@ export default function KYCStatusScreen() {
 
       // Fetch demo-account eligibility for unlock CTA
       try {
-        const nextDemoStatus = await getDemoStatus(stableGetToken);
-        setDemoStatus(nextDemoStatus);
+        const nextPaperStatus = await getPaperStatus(stableGetToken);
+        setPaperStatus(nextPaperStatus);
       } catch {
-        setDemoStatus(null);
+        setPaperStatus(null);
       }
 
       // If we have a session ID, fetch specific session status
@@ -130,12 +130,12 @@ export default function KYCStatusScreen() {
     router.replace('/kyc/start' as any);
   };
 
-  const handleUnlockDemo = useCallback(async () => {
+  const handleUnlockPaper = useCallback(async () => {
     try {
-      setUnlockingDemo(true);
-      await activateDemoAccount(stableGetToken);
-      const nextDemoStatus = await getDemoStatus(stableGetToken);
-      setDemoStatus(nextDemoStatus);
+      setUnlockingPaper(true);
+      await activatePaperAccount(stableGetToken);
+      const nextPaperStatus = await getPaperStatus(stableGetToken);
+      setPaperStatus(nextPaperStatus);
       Alert.alert(
         'Demo Account Unlocked',
         'Your demo wallet is now active with $100,000 virtual cash.'
@@ -146,7 +146,7 @@ export default function KYCStatusScreen() {
         err instanceof Error ? err.message : 'Please try again.'
       );
     } finally {
-      setUnlockingDemo(false);
+      setUnlockingPaper(false);
     }
   }, []);
 
@@ -180,8 +180,8 @@ export default function KYCStatusScreen() {
     const isKycApproved = sessionStatus?.status === 'approved' || userSummary?.kycStatus === 'approved';
     if (
       isKycApproved &&
-      demoStatus?.canActivateDemo &&
-      !demoStatus?.hasDemoAccount &&
+      paperStatus?.canActivateDemo &&
+      !paperStatus?.hasDemoAccount &&
       !unlockPromptShown.current
     ) {
       unlockPromptShown.current = true;
@@ -193,17 +193,17 @@ export default function KYCStatusScreen() {
           {
             text: 'Unlock now',
             onPress: () => {
-              void handleUnlockDemo();
+              void handleUnlockPaper();
             },
           },
         ]
       );
     }
 
-    if (demoStatus?.hasDemoAccount) {
+    if (paperStatus?.hasDemoAccount) {
       unlockPromptShown.current = false;
     }
-  }, [demoStatus?.canActivateDemo, demoStatus?.hasDemoAccount, handleUnlockDemo, sessionStatus?.status, userSummary?.kycStatus]);
+  }, [paperStatus?.canActivateDemo, paperStatus?.hasDemoAccount, handleUnlockPaper, sessionStatus?.status, userSummary?.kycStatus]);
 
   // Get current status for display
   const currentStatus: KycSessionStatus = sessionStatus?.status || 
@@ -361,7 +361,7 @@ export default function KYCStatusScreen() {
             </Card>
           )}
 
-          {demoStatus?.canActivateDemo && !demoStatus?.hasDemoAccount && (
+          {paperStatus?.canActivateDemo && !paperStatus?.hasDemoAccount && (
             <Card style={{ marginBottom: 16, backgroundColor: theme.colors.accent.primary + '15' }}>
               <Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
                 Unlock your demo account
@@ -370,17 +370,17 @@ export default function KYCStatusScreen() {
                 KYC is complete. Activate demo trading to receive $100,000 virtual cash.
               </Text>
               <Button
-                title={unlockingDemo ? 'Unlocking...' : 'Unlock Demo Account'}
+                title={unlockingPaper ? 'Unlocking...' : 'Unlock Demo Account'}
                 onPress={() => {
-                  void handleUnlockDemo();
+                  void handleUnlockPaper();
                 }}
-                disabled={unlockingDemo}
+                disabled={unlockingPaper}
                 fullWidth
               />
             </Card>
           )}
 
-          {demoStatus?.hasDemoAccount && (
+          {paperStatus?.hasDemoAccount && (
             <Card style={{ marginBottom: 16, backgroundColor: theme.colors.success + '15' }}>
               <Text style={{ color: theme.colors.success, fontSize: 14, fontWeight: '600' }}>
                 Demo account is active. You can now paper trade with live market data.

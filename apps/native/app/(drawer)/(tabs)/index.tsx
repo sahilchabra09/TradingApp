@@ -6,16 +6,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import {
-	getDemoAccount,
-	getDemoHoldings,
-	getDemoMarketData,
-	getDemoPortfolio,
-	getDemoStatus,
-	type DemoHoldingsResponse,
-	type DemoMarketData,
-	type DemoPortfolioResponse,
-	type DemoStatus,
-} from '@/lib/demo-api';
+	getPaperAccount,
+	getPaperHoldings,
+	getPaperMarketData,
+	getPaperPortfolio,
+	getPaperStatus,
+	type PaperHoldingsResponse,
+	type PaperMarketData,
+	type PaperPortfolioResponse,
+	type PaperStatus,
+} from '@/lib/paper-api';
 import { formatCurrency, formatPercentage } from '@/lib/formatters';
 import { useStableToken } from '@/lib/hooks';
 
@@ -23,10 +23,10 @@ const OVERVIEW_SYMBOLS = ['AAPL', 'TSLA', 'SPY', 'QQQ'] as const;
 const toNumber = (value: string | undefined) => Number(value || 0);
 
 type HomeState = {
-	status: DemoStatus | null;
-	portfolio: DemoPortfolioResponse | null;
-	holdings: DemoHoldingsResponse | null;
-	overview: DemoMarketData[];
+	status: PaperStatus | null;
+	portfolio: PaperPortfolioResponse | null;
+	holdings: PaperHoldingsResponse | null;
+	overview: PaperMarketData[];
 };
 
 export default function HomeScreen() {
@@ -50,19 +50,19 @@ export default function HomeScreen() {
 
 		try {
 			setIsLoading(true);
-			const status = await getDemoStatus(stableGetToken);
+			const status = await getPaperStatus(stableGetToken);
 
 			const overview = (
 				await Promise.all(
 					OVERVIEW_SYMBOLS.map(async (symbol) => {
 						try {
-							return await getDemoMarketData(symbol, stableGetToken);
+							return await getPaperMarketData(symbol, stableGetToken);
 						} catch {
 							return null;
 						}
 					})
 				)
-			).filter((quote): quote is DemoMarketData => Boolean(quote));
+			).filter((quote): quote is PaperMarketData => Boolean(quote));
 
 			if (!status.hasDemoAccount) {
 				setState({
@@ -75,10 +75,10 @@ export default function HomeScreen() {
 				return;
 			}
 
-			const account = await getDemoAccount(stableGetToken);
+			const account = await getPaperAccount(stableGetToken);
 			const [portfolio, holdings] = await Promise.all([
-				getDemoPortfolio(account.userId, stableGetToken),
-				getDemoHoldings(account.userId, stableGetToken),
+				getPaperPortfolio(account.userId, stableGetToken),
+				getPaperHoldings(account.userId, stableGetToken),
 			]);
 
 			setState({

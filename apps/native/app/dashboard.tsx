@@ -4,20 +4,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import { useStableToken } from '@/lib/hooks';import { router } from 'expo-router';
 import {
-	activateDemoAccount,
-	getDemoAccount,
-	getDemoPortfolio,
-	getDemoStatus,
-	type DemoAccount,
-	type DemoPortfolioResponse,
-	type DemoStatus,
-} from '@/lib/demo-api';
+	activatePaperAccount,
+	getPaperAccount,
+	getPaperPortfolio,
+	getPaperStatus,
+	type PaperAccount,
+	type PaperPortfolioResponse,
+	type PaperStatus,
+} from '@/lib/paper-api';
 import { formatCurrency, formatPercentage, formatRelativeTime } from '@/lib/formatters';
 
 type DashboardState = {
-	status: DemoStatus | null;
-	account: DemoAccount | null;
-	portfolio: DemoPortfolioResponse | null;
+	status: PaperStatus | null;
+	account: PaperAccount | null;
+	portfolio: PaperPortfolioResponse | null;
 };
 
 const toNumber = (value: string | undefined) => Number(value || 0);
@@ -42,7 +42,7 @@ export default function DemoDashboardScreen() {
 
 		try {
 			setIsLoading(true);
-			const status = await getDemoStatus(stableGetToken);
+			const status = await getPaperStatus(stableGetToken);
 			if (!status.hasDemoAccount) {
 				setData({ status, account: null, portfolio: null });
 				setError(null);
@@ -50,8 +50,8 @@ export default function DemoDashboardScreen() {
 				return;
 			}
 
-			const account = await getDemoAccount(stableGetToken);
-			const portfolio = await getDemoPortfolio(account.userId, stableGetToken);
+			const account = await getPaperAccount(stableGetToken);
+			const portfolio = await getPaperPortfolio(account.userId, stableGetToken);
 			setData({ status, account, portfolio });
 			setError(null);
 			setLastUpdatedAt(new Date());
@@ -143,7 +143,7 @@ export default function DemoDashboardScreen() {
 						<Pressable
 							className="items-center rounded-full bg-[#00D35A] px-5 py-4"
 							onPress={() => {
-								void activateDemoAccount(stableGetToken).then(() => loadDashboard());
+								void activatePaperAccount(stableGetToken).then(() => loadDashboard());
 							}}
 						>
 							<Text className="text-base font-semibold text-[#031108]">Activate demo account</Text>

@@ -4,7 +4,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import { getDemoAccount, getDemoTradeHistory, type DemoTradeHistoryItem } from '@/lib/demo-api';
+import { getPaperAccount, getPaperTradeHistory, type PaperTradeHistoryItem } from '@/lib/paper-api';
 
 const toNumber = (value: string) => Number(value || 0);
 
@@ -15,7 +15,7 @@ export default function TransactionHistoryScreen() {
 	const [filter, setFilter] = useState<'all' | 'buy' | 'sell'>('all');
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [trades, setTrades] = useState<DemoTradeHistoryItem[]>([]);
+	const [trades, setTrades] = useState<PaperTradeHistoryItem[]>([]);
 
 	const filters = ['all', 'buy', 'sell'] as const;
 
@@ -27,8 +27,8 @@ export default function TransactionHistoryScreen() {
 
 		try {
 			setIsLoading(true);
-			const account = await getDemoAccount(stableGetToken);
-			const history = await getDemoTradeHistory(account.userId, stableGetToken);
+			const account = await getPaperAccount(stableGetToken);
+			const history = await getPaperTradeHistory(account.userId, stableGetToken);
 			setTrades(history.trades);
 			setError(null);
 		} catch (err) {

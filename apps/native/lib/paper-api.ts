@@ -9,7 +9,7 @@ type ApiEnvelope<T> = {
 	details?: Record<string, unknown>;
 };
 
-export type DemoAccount = {
+export type PaperAccount = {
 	userId: string;
 	clerkId: string | null;
 	accountType: 'market_data_only' | 'demo_trader' | 'live_trader';
@@ -19,7 +19,7 @@ export type DemoAccount = {
 	updatedAt: string;
 };
 
-export type DemoMarketData = {
+export type PaperMarketData = {
 	symbol: string;
 	baseSymbol: string;
 	instrumentId: string;
@@ -32,7 +32,7 @@ export type DemoMarketData = {
 	asOf: string;
 };
 
-export type DemoStatus = {
+export type PaperStatus = {
 	userId: string;
 	accountType: 'market_data_only' | 'demo_trader' | 'live_trader';
 	kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
@@ -41,13 +41,13 @@ export type DemoStatus = {
 	hasDemoAccount: boolean;
 };
 
-export type DemoTradePayload = {
+export type PaperTradePayload = {
 	symbol: string;
 	side: 'buy' | 'sell';
 	quantity: string;
 };
 
-export type DemoTradeResult = {
+export type PaperTradeResult = {
 	tradeId: string;
 	userId: string;
 	symbol: string;
@@ -61,7 +61,7 @@ export type DemoTradeResult = {
 	timestamp: string;
 };
 
-export type DemoHolding = {
+export type PaperHolding = {
 	id: string;
 	symbol: string;
 	instrumentId: string;
@@ -75,10 +75,10 @@ export type DemoHolding = {
 	pnlPercent: string;
 };
 
-export type DemoHoldingsResponse = {
+export type PaperHoldingsResponse = {
 	userId: string;
 	cash: string;
-	holdings: DemoHolding[];
+	holdings: PaperHolding[];
 	totals: {
 		holdingsValue: string;
 		totalValue: string;
@@ -87,7 +87,7 @@ export type DemoHoldingsResponse = {
 	};
 };
 
-export type DemoPortfolioResponse = {
+export type PaperPortfolioResponse = {
 	userId: string;
 	cash: string;
 	holdingsValue: string;
@@ -95,7 +95,7 @@ export type DemoPortfolioResponse = {
 	totalPnl: string;
 };
 
-export type DemoTradeHistoryItem = {
+export type PaperTradeHistoryItem = {
 	id: string;
 	symbol: string;
 	instrumentId: string;
@@ -106,9 +106,9 @@ export type DemoTradeHistoryItem = {
 	timestamp: string;
 };
 
-export type DemoTradeHistoryResponse = {
+export type PaperTradeHistoryResponse = {
 	userId: string;
-	trades: DemoTradeHistoryItem[];
+	trades: PaperTradeHistoryItem[];
 };
 
 const API_BASE_URL = (process.env.EXPO_PUBLIC_SERVER_URL || 'http://localhost:3000').replace(
@@ -116,7 +116,7 @@ const API_BASE_URL = (process.env.EXPO_PUBLIC_SERVER_URL || 'http://localhost:30
 	''
 );
 
-async function demoRequest<T>(
+async function paperRequest<T>(
 	path: string,
 	tokenGetter: TokenGetter,
 	init: RequestInit = {}
@@ -125,7 +125,7 @@ async function demoRequest<T>(
 
 	const token = await tokenGetter();
 	if (!token) {
-		throw new Error('Please sign in again to access demo trading.');
+		throw new Error('Please sign in again to access paper trading.');
 	}
 
 	const response = await fetch(url, {
@@ -148,7 +148,7 @@ async function demoRequest<T>(
 	} catch {
 		// Not valid JSON — likely ngrok interstitial HTML page or proxy error
 		console.error(
-			`[demo-api] ${url} returned non-JSON (status ${response.status}):`,
+			`[paper-api] ${url} returned non-JSON (status ${response.status}):`,
 			rawText.slice(0, 200)
 		);
 		throw new Error(
@@ -158,35 +158,35 @@ async function demoRequest<T>(
 	}
 
 	if (!response.ok || !payload.success || !payload.data) {
-		throw new Error(payload.error || payload.message || 'The demo trading request failed.');
+		throw new Error(payload.error || payload.message || 'The paper trading request failed.');
 	}
 
 	return payload.data;
 }
 
-export function getDemoAccount(tokenGetter: TokenGetter) {
-	return demoRequest<DemoAccount>('/api/demo/account', tokenGetter);
+export function getPaperAccount(tokenGetter: TokenGetter) {
+	return paperRequest<PaperAccount>('/api/paper-trading/account', tokenGetter);
 }
 
-export function activateDemoAccount(tokenGetter: TokenGetter) {
-	return demoRequest<DemoAccount>('/api/demo/account', tokenGetter, {
+export function activatePaperAccount(tokenGetter: TokenGetter) {
+	return paperRequest<PaperAccount>('/api/paper-trading/account', tokenGetter, {
 		method: 'POST',
 	});
 }
 
-export function getDemoStatus(tokenGetter: TokenGetter) {
-	return demoRequest<DemoStatus>('/api/demo/status', tokenGetter);
+export function getPaperStatus(tokenGetter: TokenGetter) {
+	return paperRequest<PaperStatus>('/api/paper-trading/status', tokenGetter);
 }
 
-export function getDemoMarketData(symbol: string, tokenGetter: TokenGetter) {
-	return demoRequest<DemoMarketData>(
-		`/api/demo/marketdata/${encodeURIComponent(symbol.trim().toUpperCase())}`,
+export function getPaperMarketData(symbol: string, tokenGetter: TokenGetter) {
+	return paperRequest<PaperMarketData>(
+		`/api/paper-trading/marketdata/${encodeURIComponent(symbol.trim().toUpperCase())}`,
 		tokenGetter
 	);
 }
 
-export function placeDemoTrade(payload: DemoTradePayload, tokenGetter: TokenGetter) {
-	return demoRequest<DemoTradeResult>('/api/demo/trade', tokenGetter, {
+export function placePaperTrade(payload: PaperTradePayload, tokenGetter: TokenGetter) {
+	return paperRequest<PaperTradeResult>('/api/paper-trading/trade', tokenGetter, {
 		method: 'POST',
 		body: JSON.stringify({
 			...payload,
@@ -195,23 +195,23 @@ export function placeDemoTrade(payload: DemoTradePayload, tokenGetter: TokenGett
 	});
 }
 
-export function getDemoHoldings(userId: string, tokenGetter: TokenGetter) {
-	return demoRequest<DemoHoldingsResponse>(
-		`/api/demo/holdings/${encodeURIComponent(userId)}`,
+export function getPaperHoldings(userId: string, tokenGetter: TokenGetter) {
+	return paperRequest<PaperHoldingsResponse>(
+		`/api/paper-trading/holdings/${encodeURIComponent(userId)}`,
 		tokenGetter
 	);
 }
 
-export function getDemoPortfolio(userId: string, tokenGetter: TokenGetter) {
-	return demoRequest<DemoPortfolioResponse>(
-		`/api/demo/portfolio/${encodeURIComponent(userId)}`,
+export function getPaperPortfolio(userId: string, tokenGetter: TokenGetter) {
+	return paperRequest<PaperPortfolioResponse>(
+		`/api/paper-trading/portfolio/${encodeURIComponent(userId)}`,
 		tokenGetter
 	);
 }
 
-export function getDemoTradeHistory(userId: string, tokenGetter: TokenGetter) {
-	return demoRequest<DemoTradeHistoryResponse>(
-		`/api/demo/trades/${encodeURIComponent(userId)}`,
+export function getPaperTradeHistory(userId: string, tokenGetter: TokenGetter) {
+	return paperRequest<PaperTradeHistoryResponse>(
+		`/api/paper-trading/trades/${encodeURIComponent(userId)}`,
 		tokenGetter
 	);
 }
@@ -220,12 +220,12 @@ export function getDemoTradeHistory(userId: string, tokenGetter: TokenGetter) {
 
 /**
  * Fetch live quotes for multiple symbols in one HTTP round-trip.
- * Calls GET /api/demo/marketdata/batch?symbols=AAPL,MSFT,...
+ * Calls GET /api/paper-trading/marketdata/batch?symbols=AAPL,MSFT,...
  */
-export function getDemoBatchMarketData(symbols: string[], tokenGetter: TokenGetter) {
+export function getPaperBatchMarketData(symbols: string[], tokenGetter: TokenGetter) {
 	const symbolsParam = symbols.map((s) => s.trim().toUpperCase()).join(',');
-	return demoRequest<DemoMarketData[]>(
-		`/api/demo/marketdata/batch?symbols=${encodeURIComponent(symbolsParam)}`,
+	return paperRequest<PaperMarketData[]>(
+		`/api/paper-trading/marketdata/batch?symbols=${encodeURIComponent(symbolsParam)}`,
 		tokenGetter
 	);
 }
@@ -243,7 +243,7 @@ export type HistoricalBar = {
 
 export type ChartPeriod = '1D' | '1W' | '1M' | '3M' | '1Y';
 
-export type DemoMarketHistoryResponse = {
+export type PaperMarketHistoryResponse = {
 	symbol: string;
 	period: ChartPeriod;
 	bars: HistoricalBar[];
@@ -251,15 +251,15 @@ export type DemoMarketHistoryResponse = {
 
 /**
  * Fetch OHLCV bar history for a single symbol.
- * Calls GET /api/demo/marketdata/:symbol/history?period=1D|1W|1M|3M|1Y
+ * Calls GET /api/paper-trading/marketdata/:symbol/history?period=1D|1W|1M|3M|1Y
  */
-export function getDemoMarketHistory(
+export function getPaperMarketHistory(
 	symbol: string,
 	period: ChartPeriod,
 	tokenGetter: TokenGetter
 ) {
-	return demoRequest<DemoMarketHistoryResponse>(
-		`/api/demo/marketdata/${encodeURIComponent(symbol.trim().toUpperCase())}/history?period=${encodeURIComponent(period)}`,
+	return paperRequest<PaperMarketHistoryResponse>(
+		`/api/paper-trading/marketdata/${encodeURIComponent(symbol.trim().toUpperCase())}/history?period=${encodeURIComponent(period)}`,
 		tokenGetter
 	);
 }
@@ -273,15 +273,15 @@ export type AssetInfo = {
 	tradable: boolean;
 };
 
-export type DemoAssetsResponse = AssetInfo[];
+export type PaperAssetsResponse = AssetInfo[];
 
 /**
  * Search US equity assets by symbol or company name.
- * Calls GET /api/demo/assets?q=<query>&limit=<n>
+ * Calls GET /api/paper-trading/assets?q=<query>&limit=<n>
  *
  * Results are ranked: exact symbol match → symbol prefix → name contains.
  */
-export function searchDemoAssets(
+export function searchPaperAssets(
 	query: string,
 	tokenGetter: TokenGetter,
 	limit = 50,
@@ -290,8 +290,8 @@ export function searchDemoAssets(
 	const q = query.trim();
 	if (q) params.set('q', q);
 	params.set('limit', String(limit));
-	return demoRequest<DemoAssetsResponse>(
-		`/api/demo/assets?${params.toString()}`,
+	return paperRequest<PaperAssetsResponse>(
+		`/api/paper-trading/assets?${params.toString()}`,
 		tokenGetter,
 	);
 }

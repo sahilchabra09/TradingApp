@@ -17,28 +17,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
 import {
-	activateDemoAccount,
-	getDemoAccount,
-	getDemoHoldings,
-	getDemoPortfolio,
-	getDemoStatus,
-	type DemoAccount,
-	type DemoHolding,
-	type DemoHoldingsResponse,
-	type DemoPortfolioResponse,
-	type DemoStatus,
-} from '@/lib/demo-api';
+	activatePaperAccount,
+	getPaperAccount,
+	getPaperHoldings,
+	getPaperPortfolio,
+	getPaperStatus,
+	type PaperAccount,
+	type PaperHolding,
+	type PaperHoldingsResponse,
+	type PaperPortfolioResponse,
+	type PaperStatus,
+} from '@/lib/paper-api';
 import { formatCurrency, formatPercentage, formatRelativeTime } from '@/lib/formatters';
-import { useDemoMarketStream, useStableToken } from '@/lib/hooks';
+import { usePaperMarketStream, useStableToken } from '@/lib/hooks';
 
 const toNumber = (value: string) => Number(value || 0);
 const toDecimalString = (value: number) => (Number.isFinite(value) ? value.toFixed(8) : '0.00000000');
 
 type PortfolioState = {
-	status: DemoStatus | null;
-	account: DemoAccount | null;
-	holdings: DemoHoldingsResponse | null;
-	portfolio: DemoPortfolioResponse | null;
+	status: PaperStatus | null;
+	account: PaperAccount | null;
+	holdings: PaperHoldingsResponse | null;
+	portfolio: PaperPortfolioResponse | null;
 };
 
 function AnimatedPnlBadge({ pnlPercent }: { pnlPercent: number }) {
@@ -84,7 +84,7 @@ function AnimatedPnlBadge({ pnlPercent }: { pnlPercent: number }) {
 	);
 }
 
-function HoldingRow({ item }: { item: DemoHolding }) {
+function HoldingRow({ item }: { item: PaperHolding }) {
 	const pnlAmount = toNumber(item.pnlAmount);
 	const pnlPercent = toNumber(item.pnlPercent);
 
@@ -169,7 +169,7 @@ export default function PortfolioDetailScreen() {
 					setIsLoading(true);
 				}
 
-				const status = await getDemoStatus(stableGetToken);
+				const status = await getPaperStatus(stableGetToken);
 				if (!status.hasDemoAccount) {
 					setState({
 						status,
@@ -182,10 +182,10 @@ export default function PortfolioDetailScreen() {
 					return;
 				}
 
-				const account = await getDemoAccount(stableGetToken);
+				const account = await getPaperAccount(stableGetToken);
 				const [holdings, portfolio] = await Promise.all([
-					getDemoHoldings(account.userId, stableGetToken),
-					getDemoPortfolio(account.userId, stableGetToken),
+					getPaperHoldings(account.userId, stableGetToken),
+					getPaperPortfolio(account.userId, stableGetToken),
 				]);
 
 				setState({
@@ -288,7 +288,7 @@ export default function PortfolioDetailScreen() {
 		[state.holdings?.holdings]
 	);
 
-	const { connectionState, subscribe } = useDemoMarketStream({
+	const { connectionState, subscribe } = usePaperMarketStream({
 		enabled: isSignedIn && holdingsSymbols.length > 0,
 		symbols: holdingsSymbols,
 		getToken: stableGetToken,
@@ -321,7 +321,7 @@ export default function PortfolioDetailScreen() {
 	const activateDemo = useCallback(async () => {
 		try {
 			setActivating(true);
-			await activateDemoAccount(stableGetToken);
+			await activatePaperAccount(stableGetToken);
 			await loadPortfolio(false);
 		} finally {
 			setActivating(false);

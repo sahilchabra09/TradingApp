@@ -8,7 +8,7 @@ import { useTheme } from '@/lib/hooks';
 import { useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { getDemoMarketData, type DemoMarketData } from '@/lib/demo-api';
+import { getPaperMarketData, type PaperMarketData } from '@/lib/paper-api';
 import { formatCurrency } from '@/lib/formatters';
 
 const QUICK_SYMBOLS = ['AAPL', 'TSLA', 'SPY', 'QQQ'] as const;
@@ -20,7 +20,7 @@ export default function TradeScreen() {
 	const { getToken, isSignedIn } = useAuth();
 	const stableGetToken = useStableToken(getToken);
 	const [selectedSymbol, setSelectedSymbol] = useState<string>('AAPL');
-	const [quote, setQuote] = useState<DemoMarketData | null>(null);
+	const [quote, setQuote] = useState<PaperMarketData | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +31,7 @@ export default function TradeScreen() {
 
 		try {
 			setIsLoading(true);
-			const nextQuote = await getDemoMarketData(selectedSymbol, stableGetToken);
+			const nextQuote = await getPaperMarketData(selectedSymbol, stableGetToken);
 			setQuote(nextQuote);
 			setError(null);
 		} catch (err) {

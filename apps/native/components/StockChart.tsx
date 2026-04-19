@@ -16,7 +16,7 @@ import Svg, {
 } from 'react-native-svg';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import type { ChartPeriod, HistoricalBar } from '@/lib/demo-api';
+import type { ChartPeriod, HistoricalBar } from '@/lib/paper-api';
 
 // ─── Re-export ────────────────────────────────────────────────────────────────
 

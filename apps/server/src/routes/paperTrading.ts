@@ -5,11 +5,11 @@ import Decimal from 'decimal.js';
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db';
 import {
-	demoHoldings,
-	demoInstruments,
-	demoTradeAttempts,
-	demoTrades,
-	demoWallets,
+	paperHoldings,
+	paperInstruments,
+	paperTradeAttempts,
+	paperTrades,
+	paperWallets,
 	users,
 } from '../db/schema';
 import { requireAuth } from '../middleware/clerk-auth';
@@ -23,18 +23,18 @@ import {
 	searchAlpacaAssets,
 } from '../services/alpaca';
 import {
-	type DemoHoldingSnapshot,
-	demoSymbolParamsSchema,
-	demoTradeRequestSchema,
-	demoUserParamsSchema,
-	demoHistoryQuerySchema,
-} from '../types/demo';
+	type PaperHoldingSnapshot,
+	paperSymbolParamsSchema,
+	paperTradeRequestSchema,
+	paperUserParamsSchema,
+	paperHistoryQuerySchema,
+} from '../types/paper';
 import { AppError, ForbiddenError, InsufficientBalanceError, ValidationError } from '../types/api';
 import { ResponseHelper } from '../utils/response';
 
-const demoRoutes = new Hono();
-const DEFAULT_DEMO_BALANCE = new Decimal('100000');
-const DEFAULT_SLIPPAGE_PCT = new Decimal(process.env.DEMO_SLIPPAGE_PCT || '0.1');
+const paperTradingRoutes = new Hono();
+const DEFAULT_PAPER_BALANCE = new Decimal('100000');
+const DEFAULT_SLIPPAGE_PCT = new Decimal(process.env.PAPER_SLIPPAGE_PCT || '0.1');
 const DB_SCALE = 8;
 const STREAM_SYMBOL_LIMIT = 100;
 
@@ -99,23 +99,23 @@ function safeParseClientMessage(raw: unknown) {
 	}
 }
 
-async function getDemoWallet(userId: string) {
-	return db.query.demoWallets.findFirst({
+async function getPaperWallet(userId: string) {
+	return db.query.paperWallets.findFirst({
 		where: (wallet, { eq }) => eq(wallet.userId, userId),
 	});
 }
 
-async function ensureDemoWallet(userId: string) {
-	const existingWallet = await getDemoWallet(userId);
+async function ensurePaperWallet(userId: string) {
+	const existingWallet = await getPaperWallet(userId);
 	if (existingWallet) {
 		return existingWallet;
 	}
 
 	const [wallet] = await db
-		.insert(demoWallets)
+		.insert(paperWallets)
 		.values({
 			userId,
-			balance: toDbDecimal(DEFAULT_DEMO_BALANCE),
+			balance: toDbDecimal(DEFAULT_PAPER_BALANCE),
 			updatedAt: new Date(),
 		})
 		.onConflictDoNothing()
@@ -125,20 +125,20 @@ async function ensureDemoWallet(userId: string) {
 		return wallet;
 	}
 
-	const retryWallet = await getDemoWallet(userId);
+	const retryWallet = await getPaperWallet(userId);
 	if (!retryWallet) {
-		throw new AppError('Unable to initialize a demo wallet', 500, 'DEMO_WALLET_INIT_FAILED');
+		throw new AppError('Unable to initialize a paper trading wallet', 500, 'PAPER_WALLET_INIT_FAILED');
 	}
 
 	return retryWallet;
 }
 
-async function getDemoEligibility(user: {
+async function getPaperEligibility(user: {
 	id: string;
 	kycStatus: string;
 	accountType: 'market_data_only' | 'demo_trader' | 'live_trader';
 }) {
-	const wallet = await getDemoWallet(user.id);
+	const wallet = await getPaperWallet(user.id);
 	const hasDemoAccount = Boolean(wallet);
 	const canActivateDemo = isKycApproved(user.kycStatus);
 	const canTradeDemo =
@@ -174,7 +174,7 @@ async function logTradeAttempt(
 	details?: string
 ) {
 	try {
-		await db.insert(demoTradeAttempts).values({
+		await db.insert(paperTradeAttempts).values({
 			userId,
 			symbol: payload.symbol,
 			side: payload.side,
@@ -183,7 +183,7 @@ async function logTradeAttempt(
 			details,
 		});
 	} catch (error) {
-		console.warn('Unable to log demo trade attempt:', error);
+		console.warn('Unable to log paper trading trade attempt:', error);
 	}
 }
 
@@ -191,14 +191,14 @@ async function upsertInstrument(
 	tx: any,
 	quote: Awaited<ReturnType<typeof getAlpacaSnapshot>>
 ) {
-	const existing = await tx.query.demoInstruments.findFirst({
-		where: (instrument: typeof demoInstruments, { eq }: any) =>
+	const existing = await tx.query.paperInstruments.findFirst({
+		where: (instrument: typeof paperInstruments, { eq }: any) =>
 			eq(instrument.symbol, quote.symbol),
 	});
 
 	if (existing) {
 		await tx
-			.update(demoInstruments)
+			.update(paperInstruments)
 			.set({
 				providerId: quote.instrumentId,
 				name: quote.instrumentName,
@@ -207,12 +207,12 @@ async function upsertInstrument(
 				lastPrice: toDbDecimal(quote.lastPrice),
 				updatedAt: new Date(),
 			})
-			.where(eq(demoInstruments.id, existing.id));
+			.where(eq(paperInstruments.id, existing.id));
 		return existing.id;
 	}
 
 	const [instrument] = await tx
-		.insert(demoInstruments)
+		.insert(paperInstruments)
 		.values({
 			symbol: quote.symbol,
 			providerId: quote.instrumentId,
@@ -233,17 +233,17 @@ function assertAuthorizedPortfolioAccess(
 	isAdmin: boolean
 ) {
 	if (requestedUserId !== authenticatedUserId && !isAdmin) {
-		throw new ForbiddenError('You can only access your own demo portfolio');
+		throw new ForbiddenError('You can only access your own paper trading portfolio');
 	}
 }
 
 async function buildHoldingsSnapshot(userId: string) {
-	const wallet = await getDemoWallet(userId);
+	const wallet = await getPaperWallet(userId);
 	if (!wallet) {
 		return {
-			hasDemoAccount: false,
+			hasPaperAccount: false,
 			cash: new Decimal(0),
-			holdings: [] as DemoHoldingSnapshot[],
+			holdings: [] as PaperHoldingSnapshot[],
 			holdingsValue: new Decimal(0),
 			totalValue: new Decimal(0),
 			totalPnl: new Decimal(0),
@@ -251,7 +251,7 @@ async function buildHoldingsSnapshot(userId: string) {
 		};
 	}
 
-	const holdings = await db.query.demoHoldings.findMany({
+	const holdings = await db.query.paperHoldings.findMany({
 		where: (holding, { eq }) => eq(holding.userId, userId),
 		with: {
 			instrument: true,
@@ -261,9 +261,9 @@ async function buildHoldingsSnapshot(userId: string) {
 	if (holdings.length === 0) {
 		const cash = new Decimal(wallet.balance);
 		return {
-			hasDemoAccount: true,
+			hasPaperAccount: true,
 			cash,
-			holdings: [] as DemoHoldingSnapshot[],
+			holdings: [] as PaperHoldingSnapshot[],
 			holdingsValue: new Decimal(0),
 			totalValue: cash,
 			totalPnl: new Decimal(0),
@@ -281,7 +281,7 @@ async function buildHoldingsSnapshot(userId: string) {
 				throw new AppError(
 					`Missing live market data for ${holding.symbol}`,
 					502,
-					'DEMO_MARKETDATA_UNAVAILABLE',
+					'PAPER_MARKETDATA_UNAVAILABLE',
 					{ symbol: holding.symbol }
 				);
 			}
@@ -332,7 +332,7 @@ async function buildHoldingsSnapshot(userId: string) {
 		: totalPnl.div(totalCostBasis).mul(100);
 
 	return {
-		hasDemoAccount: true,
+		hasPaperAccount: true,
 		cash,
 		holdings: holdingSnapshots,
 		holdingsValue,
@@ -342,9 +342,9 @@ async function buildHoldingsSnapshot(userId: string) {
 	};
 }
 
-demoRoutes.get('/status', requireAuth, async (c) => {
+paperTradingRoutes.get('/status', requireAuth, async (c) => {
 	const user = c.get('user');
-	const eligibility = await getDemoEligibility(user);
+	const eligibility = await getPaperEligibility(user);
 
 	return ResponseHelper.success(c, {
 		userId: user.id,
@@ -356,12 +356,12 @@ demoRoutes.get('/status', requireAuth, async (c) => {
 	});
 });
 
-demoRoutes.get('/account', requireAuth, async (c) => {
+paperTradingRoutes.get('/account', requireAuth, async (c) => {
 	const user = c.get('user');
-	const wallet = await getDemoWallet(user.id);
+	const wallet = await getPaperWallet(user.id);
 
 	if (!wallet) {
-		return ResponseHelper.notFound(c, 'Demo account is not activated yet');
+		return ResponseHelper.notFound(c, 'Paper trading account is not activated yet');
 	}
 
 	return ResponseHelper.success(c, {
@@ -375,19 +375,19 @@ demoRoutes.get('/account', requireAuth, async (c) => {
 	});
 });
 
-demoRoutes.post('/account', requireAuth, async (c) => {
+paperTradingRoutes.post('/account', requireAuth, async (c) => {
 	try {
 		const user = c.get('user');
-		const eligibility = await getDemoEligibility(user);
+		const eligibility = await getPaperEligibility(user);
 
 		if (!eligibility.canActivateDemo) {
-			throw new ForbiddenError('Complete KYC to activate demo trading', {
+			throw new ForbiddenError('Complete KYC to activate paper trading', {
 				kycStatus: user.kycStatus,
 				accountType: user.accountType,
 			});
 		}
 
-		const wallet = await ensureDemoWallet(user.id);
+		const wallet = await ensurePaperWallet(user.id);
 		if (user.accountType !== 'demo_trader') {
 			await updateAccountType(user.id, 'demo_trader');
 		}
@@ -406,15 +406,15 @@ demoRoutes.post('/account', requireAuth, async (c) => {
 			throw error;
 		}
 
-		console.error('Demo account init failed:', error);
-		throw new AppError('Unable to initialize demo account', 500, 'DEMO_ACCOUNT_INIT_FAILED');
+		console.error('Paper trading account init failed:', error);
+		throw new AppError('Unable to initialize paper trading account', 500, 'PAPER_ACCOUNT_INIT_FAILED');
 	}
 });
 
 // ─── Asset search ─────────────────────────────────────────────────────────────
 // GET /assets?q=apple&limit=50
 // Returns matching US equity assets from the cached Alpaca asset list.
-demoRoutes.get('/assets', requireAuth, async (c) => {
+paperTradingRoutes.get('/assets', requireAuth, async (c) => {
 	const q     = (c.req.query('q') || '').trim();
 	const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '50', 10) || 50, 1), 100);
 
@@ -424,14 +424,14 @@ demoRoutes.get('/assets', requireAuth, async (c) => {
 	} catch (error) {
 		if (error instanceof AppError) throw error;
 		console.error('Asset search failed:', error);
-		throw new AppError('Unable to search assets', 500, 'DEMO_ASSETS_SEARCH_FAILED');
+		throw new AppError('Unable to search assets', 500, 'PAPER_ASSETS_SEARCH_FAILED');
 	}
 });
 
 // ─── Batch market data ────────────────────────────────────────────────────────
 // GET /marketdata/batch?symbols=AAPL,MSFT,...
 // Returns live quotes for up to 100 symbols in a single request.
-demoRoutes.get('/marketdata/batch', requireAuth, async (c) => {
+paperTradingRoutes.get('/marketdata/batch', requireAuth, async (c) => {
 	const raw = c.req.query('symbols') || '';
 	const symbols = raw
 		.split(',')
@@ -450,7 +450,7 @@ demoRoutes.get('/marketdata/batch', requireAuth, async (c) => {
 		void Promise.allSettled(
 			Object.values(snapshots).map((quote) =>
 				db
-					.insert(demoInstruments)
+					.insert(paperInstruments)
 					.values({
 						symbol: quote.symbol,
 						providerId: quote.instrumentId,
@@ -461,7 +461,7 @@ demoRoutes.get('/marketdata/batch', requireAuth, async (c) => {
 						updatedAt: new Date(),
 					})
 					.onConflictDoUpdate({
-						target: demoInstruments.symbol,
+						target: paperInstruments.symbol,
 						set: {
 							providerId: quote.instrumentId,
 							name: quote.instrumentName,
@@ -477,18 +477,18 @@ demoRoutes.get('/marketdata/batch', requireAuth, async (c) => {
 		return ResponseHelper.success(c, Object.values(snapshots));
 	} catch (error) {
 		if (error instanceof AppError) throw error;
-		console.error('Demo batch market data failed:', error);
-		throw new AppError('Unable to fetch batch market data', 500, 'DEMO_BATCH_MARKETDATA_FAILED');
+		console.error('Paper trading batch market data failed:', error);
+		throw new AppError('Unable to fetch batch market data', 500, 'PAPER_BATCH_MARKETDATA_FAILED');
 	}
 });
 
 // ─── Historical bars ──────────────────────────────────────────────────────────
 // GET /marketdata/:symbol/history?period=1D|1W|1M|3M|1Y
-demoRoutes.get(
+paperTradingRoutes.get(
 	'/marketdata/:symbol/history',
 	requireAuth,
-	zValidator('param', demoSymbolParamsSchema),
-	zValidator('query', demoHistoryQuerySchema),
+	zValidator('param', paperSymbolParamsSchema),
+	zValidator('query', paperHistoryQuerySchema),
 	async (c) => {
 		const { symbol } = c.req.valid('param');
 		const { period } = c.req.valid('query');
@@ -498,24 +498,24 @@ demoRoutes.get(
 			return ResponseHelper.success(c, { symbol, period, bars });
 		} catch (error) {
 			if (error instanceof AppError) throw error;
-			console.error('Demo historical bars failed:', error);
-			throw new AppError('Unable to fetch historical bars', 500, 'DEMO_HISTORY_FAILED');
+			console.error('Paper trading historical bars failed:', error);
+			throw new AppError('Unable to fetch historical bars', 500, 'PAPER_HISTORY_FAILED');
 		}
 	}
 );
 
 // ─── Single symbol market data ────────────────────────────────────────────────
-demoRoutes.get(
+paperTradingRoutes.get(
 	'/marketdata/:symbol',
 	requireAuth,
-	zValidator('param', demoSymbolParamsSchema),
+	zValidator('param', paperSymbolParamsSchema),
 	async (c) => {
 		const { symbol } = c.req.valid('param');
 
 		try {
 			const quote = await getAlpacaSnapshot(symbol);
 			await db
-				.insert(demoInstruments)
+				.insert(paperInstruments)
 				.values({
 					symbol: quote.symbol,
 					providerId: quote.instrumentId,
@@ -526,7 +526,7 @@ demoRoutes.get(
 					updatedAt: new Date(),
 				})
 				.onConflictDoUpdate({
-					target: demoInstruments.symbol,
+					target: paperInstruments.symbol,
 					set: {
 						providerId: quote.instrumentId,
 						name: quote.instrumentName,
@@ -543,16 +543,16 @@ demoRoutes.get(
 				throw error;
 			}
 
-			console.error('Demo market data lookup failed:', error);
-			throw new AppError('Unable to fetch demo market data', 500, 'DEMO_MARKETDATA_FAILED');
+			console.error('Paper trading market data lookup failed:', error);
+			throw new AppError('Unable to fetch paper trading market data', 500, 'PAPER_MARKETDATA_FAILED');
 		}
 	}
 );
 
-demoRoutes.post(
+paperTradingRoutes.post(
 	'/trade',
 	requireAuth,
-	zValidator('json', demoTradeRequestSchema),
+	zValidator('json', paperTradeRequestSchema),
 	async (c) => {
 		const user = c.get('user');
 		const payload = c.req.valid('json');
@@ -562,7 +562,7 @@ demoRoutes.post(
 		};
 
 		try {
-			const eligibility = await getDemoEligibility(user);
+			const eligibility = await getPaperEligibility(user);
 			if (!eligibility.canTradeDemo) {
 				const reason = !isKycApproved(user.kycStatus)
 					? 'kyc_not_approved'
@@ -571,11 +571,11 @@ demoRoutes.post(
 					user.id,
 					normalizedPayload,
 					reason,
-					'Trade blocked until KYC is approved and demo account is activated.'
+					'Trade blocked until KYC is approved and paper trading account is activated.'
 				);
 
 				throw new ForbiddenError(
-					'Trading is locked. Complete KYC, then activate your demo account.',
+					'Trading is locked. Complete KYC, then activate your paper trading account.',
 					{
 						kycStatus: user.kycStatus,
 						accountType: user.accountType,
@@ -596,16 +596,16 @@ demoRoutes.post(
 			const timestamp = new Date();
 
 			const tradeResult = await db.transaction(async (tx) => {
-				const wallet = await tx.query.demoWallets.findFirst({
+				const wallet = await tx.query.paperWallets.findFirst({
 					where: (wallet, { eq }) => eq(wallet.userId, user.id),
 				});
 				if (!wallet) {
-					throw new ForbiddenError('Activate your demo account before placing a trade');
+					throw new ForbiddenError('Activate your paper trading account before placing a trade');
 				}
 
 				const currentBalance = new Decimal(wallet.balance);
 				if (normalizedPayload.side === 'buy' && currentBalance.lessThan(grossAmount)) {
-					await tx.insert(demoTradeAttempts).values({
+					await tx.insert(paperTradeAttempts).values({
 						userId: user.id,
 						symbol: normalizedPayload.symbol,
 						side: normalizedPayload.side,
@@ -616,19 +616,19 @@ demoRoutes.post(
 					throw new InsufficientBalanceError(
 						toApiDecimal(grossAmount),
 						toApiDecimal(currentBalance),
-						'Insufficient demo cash to execute this order'
+						'Insufficient paper trading cash to execute this order'
 					);
 				}
 
 				const instrumentId = await upsertInstrument(tx, quote);
-				const existingHolding = await tx.query.demoHoldings.findFirst({
+				const existingHolding = await tx.query.paperHoldings.findFirst({
 					where: (holding, { eq, and }) =>
 						and(eq(holding.userId, user.id), eq(holding.symbol, normalizedPayload.symbol)),
 				});
 
 				if (normalizedPayload.side === 'sell') {
 					if (!existingHolding) {
-						await tx.insert(demoTradeAttempts).values({
+						await tx.insert(paperTradeAttempts).values({
 							userId: user.id,
 							symbol: normalizedPayload.symbol,
 							side: normalizedPayload.side,
@@ -636,12 +636,12 @@ demoRoutes.post(
 							reason: 'insufficient_quantity',
 							details: 'No existing holding to sell.',
 						});
-						throw new ValidationError(`No demo position found for ${normalizedPayload.symbol}`);
+						throw new ValidationError(`No paper trading position found for ${normalizedPayload.symbol}`);
 					}
 
 					const existingQuantity = new Decimal(existingHolding.quantity);
 					if (existingQuantity.lessThan(quantity)) {
-						await tx.insert(demoTradeAttempts).values({
+						await tx.insert(paperTradeAttempts).values({
 							userId: user.id,
 							symbol: normalizedPayload.symbol,
 							side: normalizedPayload.side,
@@ -665,16 +665,16 @@ demoRoutes.post(
 						: currentBalance.plus(grossAmount);
 
 				await tx
-					.update(demoWallets)
+					.update(paperWallets)
 					.set({
 						balance: toDbDecimal(nextBalance),
 						updatedAt: timestamp,
 					})
-					.where(eq(demoWallets.userId, user.id));
+					.where(eq(paperWallets.userId, user.id));
 
 				if (normalizedPayload.side === 'buy') {
 					if (!existingHolding) {
-						await tx.insert(demoHoldings).values({
+						await tx.insert(paperHoldings).values({
 							userId: user.id,
 							symbol: normalizedPayload.symbol,
 							instrumentId,
@@ -688,30 +688,30 @@ demoRoutes.post(
 						const newAvgPrice = currentCost.plus(grossAmount).div(newQuantity);
 
 						await tx
-							.update(demoHoldings)
+							.update(paperHoldings)
 							.set({
 								instrumentId,
 								quantity: toDbDecimal(newQuantity),
 								avgPrice: toDbDecimal(newAvgPrice),
 							})
-							.where(eq(demoHoldings.id, existingHolding.id));
+							.where(eq(paperHoldings.id, existingHolding.id));
 					}
 				} else if (existingHolding) {
 					const remainingQuantity = new Decimal(existingHolding.quantity).minus(quantity);
 					if (remainingQuantity.lte(0)) {
-						await tx.delete(demoHoldings).where(eq(demoHoldings.id, existingHolding.id));
+						await tx.delete(paperHoldings).where(eq(paperHoldings.id, existingHolding.id));
 					} else {
 						await tx
-							.update(demoHoldings)
+							.update(paperHoldings)
 							.set({
 								quantity: toDbDecimal(remainingQuantity),
 							})
-							.where(eq(demoHoldings.id, existingHolding.id));
+							.where(eq(paperHoldings.id, existingHolding.id));
 					}
 				}
 
 				const [trade] = await tx
-					.insert(demoTrades)
+					.insert(paperTrades)
 					.values({
 						userId: user.id,
 						symbol: normalizedPayload.symbol,
@@ -747,13 +747,13 @@ demoRoutes.post(
 				throw error;
 			}
 
-			console.error('Demo trade failed:', error);
-			throw new AppError('Unable to execute demo trade', 500, 'DEMO_TRADE_FAILED');
+			console.error('Paper trading trade failed:', error);
+			throw new AppError('Unable to execute paper trading trade', 500, 'PAPER_TRADE_FAILED');
 		}
 	}
 );
 
-demoRoutes.get(
+paperTradingRoutes.get(
 	'/stream',
 	requireAuth,
 	upgradeWebSocket((c) => {
@@ -920,10 +920,10 @@ demoRoutes.get(
 	})
 );
 
-demoRoutes.get(
+paperTradingRoutes.get(
 	'/holdings/:userId',
 	requireAuth,
-	zValidator('param', demoUserParamsSchema),
+	zValidator('param', paperUserParamsSchema),
 	async (c) => {
 		const authUser = c.get('user');
 		const { userId } = c.req.valid('param');
@@ -947,16 +947,16 @@ demoRoutes.get(
 				throw error;
 			}
 
-			console.error('Demo holdings lookup failed:', error);
-			throw new AppError('Unable to fetch demo holdings', 500, 'DEMO_HOLDINGS_FAILED');
+			console.error('Paper trading holdings lookup failed:', error);
+			throw new AppError('Unable to fetch paper trading holdings', 500, 'PAPER_HOLDINGS_FAILED');
 		}
 	}
 );
 
-demoRoutes.get(
+paperTradingRoutes.get(
 	'/portfolio/:userId',
 	requireAuth,
-	zValidator('param', demoUserParamsSchema),
+	zValidator('param', paperUserParamsSchema),
 	async (c) => {
 		const authUser = c.get('user');
 		const { userId } = c.req.valid('param');
@@ -977,23 +977,23 @@ demoRoutes.get(
 				throw error;
 			}
 
-			console.error('Demo portfolio lookup failed:', error);
-			throw new AppError('Unable to fetch demo portfolio', 500, 'DEMO_PORTFOLIO_FAILED');
+			console.error('Paper trading portfolio lookup failed:', error);
+			throw new AppError('Unable to fetch paper trading portfolio', 500, 'PAPER_PORTFOLIO_FAILED');
 		}
 	}
 );
 
-demoRoutes.get(
+paperTradingRoutes.get(
 	'/trades/:userId',
 	requireAuth,
-	zValidator('param', demoUserParamsSchema),
+	zValidator('param', paperUserParamsSchema),
 	async (c) => {
 		const authUser = c.get('user');
 		const { userId } = c.req.valid('param');
 
 		try {
 			assertAuthorizedPortfolioAccess(userId, authUser.id, authUser.isAdmin);
-			const trades = await db.query.demoTrades.findMany({
+			const trades = await db.query.paperTrades.findMany({
 				where: (trade, { eq }) => eq(trade.userId, userId),
 				orderBy: (trade) => [desc(trade.timestamp)],
 				with: {
@@ -1023,10 +1023,10 @@ demoRoutes.get(
 				throw error;
 			}
 
-			console.error('Demo trade history lookup failed:', error);
-			throw new AppError('Unable to fetch demo trade history', 500, 'DEMO_TRADE_HISTORY_FAILED');
+			console.error('Paper trading trade history lookup failed:', error);
+			throw new AppError('Unable to fetch paper trading trade history', 500, 'PAPER_TRADE_HISTORY_FAILED');
 		}
 	}
 );
 
-export default demoRoutes;
+export default paperTradingRoutes;

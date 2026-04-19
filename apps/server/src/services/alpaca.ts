@@ -1,6 +1,6 @@
 import Alpaca from '@alpacahq/alpaca-trade-api';
 import { AppError, NotFoundError } from '../types/api';
-import type { DemoMarketDataResponse } from '../types/demo';
+import type { PaperMarketDataResponse } from '../types/paper';
 
 type SymbolAlias = {
 	providerSymbol: string;
@@ -431,7 +431,7 @@ function buildSnapshot(
 	resolved: ResolvedSymbol,
 	trade: CachedTrade,
 	source: 'websocket' | 'rest'
-): DemoMarketDataResponse {
+): PaperMarketDataResponse {
 	return {
 		symbol: resolved.requestedSymbol,
 		baseSymbol: resolved.baseSymbol,
@@ -446,7 +446,7 @@ function buildSnapshot(
 	};
 }
 
-export async function getAlpacaSnapshot(symbol: string): Promise<DemoMarketDataResponse> {
+export async function getAlpacaSnapshot(symbol: string): Promise<PaperMarketDataResponse> {
 	const resolved = await resolveSymbol(symbol);
 	subscribeSymbolsForRealtime([resolved.providerSymbol]);
 

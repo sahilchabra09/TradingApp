@@ -25,7 +25,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import kycRoutes from './routes/kyc';
 import adminRoutes from './routes/admin';
-import demoRoutes from './routes/demo';
+import paperTradingRoutes from './routes/paperTrading';
 // Import other routes when created
 // import tradeRoutes from './routes/trades';
 // import walletRoutes from './routes/wallets';
@@ -55,7 +55,7 @@ app.use('*', prettyJSON());
 app.use('/api/v1/auth/*', clerkMiddleware());
 app.use('/api/v1/users/*', clerkMiddleware());
 app.use('/api/v1/kyc/*', clerkMiddleware());
-app.use('/api/demo/*', clerkMiddleware());
+app.use('/api/paper-trading/*', clerkMiddleware());
 
 // Custom middleware
 app.use('*', rateLimiter);
@@ -88,7 +88,7 @@ api.route('/auth', authRoutes);
 api.route('/users', userRoutes);
 api.route('/kyc', kycRoutes);
 api.route('/admin', adminRoutes);
-app.route('/api/demo', demoRoutes);
+app.route('/api/paper-trading', paperTradingRoutes);
 // Add other routes when created
 // api.route('/trades', tradeRoutes);
 // api.route('/wallets', walletRoutes);

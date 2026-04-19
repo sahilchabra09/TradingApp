@@ -4,7 +4,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
-import { getDemoMarketData, type DemoMarketData } from '@/lib/demo-api';
+import { getPaperMarketData, type PaperMarketData } from '@/lib/paper-api';
 import { formatCurrency } from '@/lib/formatters';
 
 const WATCHLIST_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'SPY', 'QQQ'];
@@ -17,7 +17,7 @@ export default function WatchlistScreen() {
 	const stableGetToken = useStableToken(getToken);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [quotes, setQuotes] = useState<DemoMarketData[]>([]);
+	const [quotes, setQuotes] = useState<PaperMarketData[]>([]);
 
 	const loadWatchlist = useCallback(async () => {
 		if (!isSignedIn) {
@@ -31,13 +31,13 @@ export default function WatchlistScreen() {
 				await Promise.all(
 					WATCHLIST_SYMBOLS.map(async (symbol) => {
 						try {
-							return await getDemoMarketData(symbol, stableGetToken);
+							return await getPaperMarketData(symbol, stableGetToken);
 						} catch {
 							return null;
 						}
 					})
 				)
-			).filter((quote): quote is DemoMarketData => Boolean(quote));
+			).filter((quote): quote is PaperMarketData => Boolean(quote));
 			setQuotes(loaded);
 			setError(null);
 		} catch (err) {

@@ -10,9 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
-import { getDemoMarketData, type DemoMarketData } from '@/lib/demo-api';
+import { getPaperMarketData, type PaperMarketData } from '@/lib/paper-api';
 import { formatCurrency, formatRelativeTime } from '@/lib/formatters';
-import { useDemoMarketStream, useStableToken } from '@/lib/hooks';
+import { usePaperMarketStream, useStableToken } from '@/lib/hooks';
 
 const toNumber = (value: string | undefined) => Number(value || 0);
 
@@ -20,7 +20,7 @@ export default function MarketSearchScreen() {
 	const { getToken, isSignedIn } = useAuth();
 	const stableGetToken = useStableToken(getToken);
 	const [symbol, setSymbol] = useState('AAPL');
-	const [data, setData] = useState<DemoMarketData | null>(null);
+	const [data, setData] = useState<PaperMarketData | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const normalizedSymbol = symbol.trim().toUpperCase();
@@ -32,7 +32,7 @@ export default function MarketSearchScreen() {
 
 		try {
 			setIsLoading(true);
-			const snapshot = await getDemoMarketData(normalizedSymbol, stableGetToken);
+			const snapshot = await getPaperMarketData(normalizedSymbol, stableGetToken);
 			setData(snapshot);
 			setError(null);
 		} catch (err) {
@@ -46,7 +46,7 @@ export default function MarketSearchScreen() {
 		void refreshSnapshot();
 	}, [refreshSnapshot]);
 
-	const { connectionState, lastMessageAt, subscribe } = useDemoMarketStream({
+	const { connectionState, lastMessageAt, subscribe } = usePaperMarketStream({
 		enabled: isSignedIn && normalizedSymbol.length > 0,
 		symbols: normalizedSymbol ? [normalizedSymbol] : [],
 		getToken: stableGetToken,

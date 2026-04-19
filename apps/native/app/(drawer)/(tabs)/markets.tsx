@@ -13,11 +13,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import {
-	getDemoBatchMarketData,
-	searchDemoAssets,
+	getPaperBatchMarketData,
+	searchPaperAssets,
 	type AssetInfo,
-	type DemoMarketData,
-} from '@/lib/demo-api';
+	type PaperMarketData,
+} from '@/lib/paper-api';
 import { formatCurrency } from '@/lib/formatters';
 import { useStableToken } from '@/lib/hooks';
 
@@ -71,7 +71,7 @@ const COMPANY_NAMES: Record<string, string> = {
 	GLD: 'SPDR Gold Shares', VOO: 'Vanguard S&P 500 ETF',
 };
 
-function getCompanyName(quote: DemoMarketData): string {
+function getCompanyName(quote: PaperMarketData): string {
 	return quote.instrumentName || COMPANY_NAMES[quote.symbol] || quote.symbol;
 }
 
@@ -90,7 +90,7 @@ export default function MarketsScreen() {
 	const [isLoading, setIsLoading]             = useState(true);
 	const [isSearchLoading, setIsSearchLoading] = useState(false);
 	const [error, setError]                     = useState<string | null>(null);
-	const [quotes, setQuotes]                   = useState<DemoMarketData[]>([]);
+	const [quotes, setQuotes]                   = useState<PaperMarketData[]>([]);
 	const [searchResults, setSearchResults]     = useState<AssetInfo[]>([]);
 
 	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,7 +103,7 @@ export default function MarketsScreen() {
 		if (!isSignedIn) { setIsLoading(false); return; }
 		try {
 			setIsLoading(true);
-			const results = await getDemoBatchMarketData([...MARKET_SYMBOLS], stableGetToken);
+			const results = await getPaperBatchMarketData([...MARKET_SYMBOLS], stableGetToken);
 			results.sort((a, b) => getCompanyName(a).localeCompare(getCompanyName(b)));
 			setQuotes(results);
 			setError(null);
@@ -132,7 +132,7 @@ export default function MarketsScreen() {
 
 		searchTimerRef.current = setTimeout(async () => {
 			try {
-				const results = await searchDemoAssets(q, stableGetToken, 60);
+				const results = await searchPaperAssets(q, stableGetToken, 60);
 				setSearchResults(results);
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Search failed.');
@@ -283,7 +283,7 @@ export default function MarketsScreen() {
 
 // ─── Popular stock row (live price) ──────────────────────────────────────────
 
-function StockRow({ quote, onPress }: { quote: DemoMarketData; onPress: () => void }) {
+function StockRow({ quote, onPress }: { quote: PaperMarketData; onPress: () => void }) {
 	const companyName = getCompanyName(quote);
 	const price       = toNumber(quote.lastPrice);
 

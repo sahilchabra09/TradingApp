@@ -1,5 +1,5 @@
 import { TabBarIcon } from "@/components/tabbar-icon";
-import { DemoAccountGateModal } from "@/components/demo-account-gate-modal";
+import { PaperAccountGateModal } from "@/components/paper-account-gate-modal";
 import { Tabs } from "expo-router";
 
 export default function TabLayout() {
@@ -62,7 +62,7 @@ export default function TabLayout() {
 					}}
 				/>
 			</Tabs>
-			<DemoAccountGateModal />
+			<PaperAccountGateModal />
 		</>
 	);
 }

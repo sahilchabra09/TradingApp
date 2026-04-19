@@ -15,8 +15,8 @@ import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { users } from './users';
 
-export const demoTradeSideEnum = pgEnum('demo_trade_side', ['buy', 'sell']);
-export const demoTradeAttemptReasonEnum = pgEnum('demo_trade_attempt_reason', [
+export const paperTradeSideEnum = pgEnum('demo_trade_side', ['buy', 'sell']);
+export const paperTradeAttemptReasonEnum = pgEnum('demo_trade_attempt_reason', [
 	'kyc_not_approved',
 	'demo_account_missing',
 	'insufficient_balance',
@@ -24,7 +24,7 @@ export const demoTradeAttemptReasonEnum = pgEnum('demo_trade_attempt_reason', [
 	'validation_failed',
 ]);
 
-export const demoInstruments = pgTable(
+export const paperInstruments = pgTable(
 	'demo_instruments',
 	{
 		id: uuid('id').defaultRandom().primaryKey(),
@@ -42,7 +42,7 @@ export const demoInstruments = pgTable(
 	})
 );
 
-export const demoWallets = pgTable(
+export const paperWallets = pgTable(
 	'demo_wallets',
 	{
 		userId: uuid('user_id')
@@ -59,7 +59,7 @@ export const demoWallets = pgTable(
 	})
 );
 
-export const demoHoldings = pgTable(
+export const paperHoldings = pgTable(
 	'demo_holdings',
 	{
 		id: uuid('id').defaultRandom().primaryKey(),
@@ -69,7 +69,7 @@ export const demoHoldings = pgTable(
 		symbol: varchar('symbol', { length: 32 }).notNull(),
 		instrumentId: uuid('instrument_id')
 			.notNull()
-			.references(() => demoInstruments.id, { onDelete: 'restrict' }),
+			.references(() => paperInstruments.id, { onDelete: 'restrict' }),
 		quantity: numeric('quantity', { precision: 20, scale: 8 }).notNull(),
 		avgPrice: numeric('avg_price', { precision: 20, scale: 8 }).notNull(),
 	},
@@ -86,7 +86,7 @@ export const demoHoldings = pgTable(
 	})
 );
 
-export const demoTrades = pgTable(
+export const paperTrades = pgTable(
 	'demo_trades',
 	{
 		id: uuid('id').defaultRandom().primaryKey(),
@@ -96,8 +96,8 @@ export const demoTrades = pgTable(
 		symbol: varchar('symbol', { length: 32 }).notNull(),
 		instrumentId: uuid('instrument_id')
 			.notNull()
-			.references(() => demoInstruments.id, { onDelete: 'restrict' }),
-		side: demoTradeSideEnum('side').notNull(),
+			.references(() => paperInstruments.id, { onDelete: 'restrict' }),
+		side: paperTradeSideEnum('side').notNull(),
 		quantity: numeric('quantity', { precision: 20, scale: 8 }).notNull(),
 		price: numeric('price', { precision: 20, scale: 8 }).notNull(),
 		timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
@@ -111,7 +111,7 @@ export const demoTrades = pgTable(
 	})
 );
 
-export const demoTradeAttempts = pgTable(
+export const paperTradeAttempts = pgTable(
 	'demo_trade_attempts',
 	{
 		id: uuid('id').defaultRandom().primaryKey(),
@@ -119,9 +119,9 @@ export const demoTradeAttempts = pgTable(
 			.notNull()
 			.references(() => users.id, { onDelete: 'cascade' }),
 		symbol: varchar('symbol', { length: 32 }).notNull(),
-		side: demoTradeSideEnum('side').notNull(),
+		side: paperTradeSideEnum('side').notNull(),
 		quantity: numeric('quantity', { precision: 20, scale: 8 }).notNull(),
-		reason: demoTradeAttemptReasonEnum('reason').notNull(),
+		reason: paperTradeAttemptReasonEnum('reason').notNull(),
 		details: text('details'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	},
@@ -135,53 +135,53 @@ export const demoTradeAttempts = pgTable(
 	})
 );
 
-export const demoInstrumentsRelations = relations(demoInstruments, ({ many }) => ({
-	holdings: many(demoHoldings),
-	trades: many(demoTrades),
+export const paperInstrumentsRelations = relations(paperInstruments, ({ many }) => ({
+	holdings: many(paperHoldings),
+	trades: many(paperTrades),
 }));
 
-export const demoWalletsRelations = relations(demoWallets, ({ one }) => ({
+export const paperWalletsRelations = relations(paperWallets, ({ one }) => ({
 	user: one(users, {
-		fields: [demoWallets.userId],
+		fields: [paperWallets.userId],
 		references: [users.id],
 	}),
 }));
 
-export const demoHoldingsRelations = relations(demoHoldings, ({ one }) => ({
+export const paperHoldingsRelations = relations(paperHoldings, ({ one }) => ({
 	user: one(users, {
-		fields: [demoHoldings.userId],
+		fields: [paperHoldings.userId],
 		references: [users.id],
 	}),
-	instrument: one(demoInstruments, {
-		fields: [demoHoldings.instrumentId],
-		references: [demoInstruments.id],
+	instrument: one(paperInstruments, {
+		fields: [paperHoldings.instrumentId],
+		references: [paperInstruments.id],
 	}),
 }));
 
-export const demoTradesRelations = relations(demoTrades, ({ one }) => ({
+export const paperTradesRelations = relations(paperTrades, ({ one }) => ({
 	user: one(users, {
-		fields: [demoTrades.userId],
+		fields: [paperTrades.userId],
 		references: [users.id],
 	}),
-	instrument: one(demoInstruments, {
-		fields: [demoTrades.instrumentId],
-		references: [demoInstruments.id],
+	instrument: one(paperInstruments, {
+		fields: [paperTrades.instrumentId],
+		references: [paperInstruments.id],
 	}),
 }));
 
-export const demoTradeAttemptsRelations = relations(demoTradeAttempts, ({ one }) => ({
+export const paperTradeAttemptsRelations = relations(paperTradeAttempts, ({ one }) => ({
 	user: one(users, {
-		fields: [demoTradeAttempts.userId],
+		fields: [paperTradeAttempts.userId],
 		references: [users.id],
 	}),
 }));
 
-export const insertDemoWalletSchema = createInsertSchema(demoWallets, {
+export const insertPaperWalletSchema = createInsertSchema(paperWallets, {
 	balance: z.string().regex(/^\d+(\.\d{1,8})?$/, 'Invalid balance format'),
 });
-export const selectDemoWalletSchema = createSelectSchema(demoWallets);
+export const selectPaperWalletSchema = createSelectSchema(paperWallets);
 
-export const insertDemoInstrumentSchema = createInsertSchema(demoInstruments, {
+export const insertPaperInstrumentSchema = createInsertSchema(paperInstruments, {
 	symbol: z.string().min(1).max(32),
 	providerId: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -189,36 +189,36 @@ export const insertDemoInstrumentSchema = createInsertSchema(demoInstruments, {
 	currency: z.string().max(8).optional(),
 	lastPrice: z.string().regex(/^\d+(\.\d{1,8})?$/, 'Invalid price format').optional(),
 });
-export const selectDemoInstrumentSchema = createSelectSchema(demoInstruments);
+export const selectPaperInstrumentSchema = createSelectSchema(paperInstruments);
 
-export const insertDemoHoldingSchema = createInsertSchema(demoHoldings, {
+export const insertPaperHoldingSchema = createInsertSchema(paperHoldings, {
 	symbol: z.string().min(1).max(32),
 	quantity: z.string().regex(/^\d+(\.\d{1,8})?$/, 'Invalid quantity format'),
 	avgPrice: z.string().regex(/^\d+(\.\d{1,8})?$/, 'Invalid price format'),
 });
-export const selectDemoHoldingSchema = createSelectSchema(demoHoldings);
+export const selectPaperHoldingSchema = createSelectSchema(paperHoldings);
 
-export const insertDemoTradeSchema = createInsertSchema(demoTrades, {
+export const insertPaperTradeSchema = createInsertSchema(paperTrades, {
 	symbol: z.string().min(1).max(32),
 	quantity: z.string().regex(/^\d+(\.\d{1,8})?$/, 'Invalid quantity format'),
 	price: z.string().regex(/^\d+(\.\d{1,8})?$/, 'Invalid price format'),
 });
-export const selectDemoTradeSchema = createSelectSchema(demoTrades);
+export const selectPaperTradeSchema = createSelectSchema(paperTrades);
 
-export const insertDemoTradeAttemptSchema = createInsertSchema(demoTradeAttempts, {
+export const insertPaperTradeAttemptSchema = createInsertSchema(paperTradeAttempts, {
 	symbol: z.string().min(1).max(32),
 	quantity: z.string().regex(/^\d+(\.\d{1,8})?$/, 'Invalid quantity format'),
 	details: z.string().max(1000).optional(),
 });
-export const selectDemoTradeAttemptSchema = createSelectSchema(demoTradeAttempts);
+export const selectPaperTradeAttemptSchema = createSelectSchema(paperTradeAttempts);
 
-export type DemoWallet = typeof demoWallets.$inferSelect;
-export type NewDemoWallet = typeof demoWallets.$inferInsert;
-export type DemoInstrument = typeof demoInstruments.$inferSelect;
-export type NewDemoInstrument = typeof demoInstruments.$inferInsert;
-export type DemoHolding = typeof demoHoldings.$inferSelect;
-export type NewDemoHolding = typeof demoHoldings.$inferInsert;
-export type DemoTrade = typeof demoTrades.$inferSelect;
-export type NewDemoTrade = typeof demoTrades.$inferInsert;
-export type DemoTradeAttempt = typeof demoTradeAttempts.$inferSelect;
-export type NewDemoTradeAttempt = typeof demoTradeAttempts.$inferInsert;
+export type PaperWallet = typeof paperWallets.$inferSelect;
+export type NewPaperWallet = typeof paperWallets.$inferInsert;
+export type PaperInstrument = typeof paperInstruments.$inferSelect;
+export type NewPaperInstrument = typeof paperInstruments.$inferInsert;
+export type PaperHolding = typeof paperHoldings.$inferSelect;
+export type NewPaperHolding = typeof paperHoldings.$inferInsert;
+export type PaperTrade = typeof paperTrades.$inferSelect;
+export type NewPaperTrade = typeof paperTrades.$inferInsert;
+export type PaperTradeAttempt = typeof paperTradeAttempts.$inferSelect;
+export type NewPaperTradeAttempt = typeof paperTradeAttempts.$inferInsert;

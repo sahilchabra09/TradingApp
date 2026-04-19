@@ -4,14 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import {
-	getDemoAccount,
-	getDemoHoldings,
-	getDemoPortfolio,
-	getDemoStatus,
-	type DemoHoldingsResponse,
-	type DemoPortfolioResponse,
-	type DemoStatus,
-} from '@/lib/demo-api';
+	getPaperAccount,
+	getPaperHoldings,
+	getPaperPortfolio,
+	getPaperStatus,
+	type PaperHoldingsResponse,
+	type PaperPortfolioResponse,
+	type PaperStatus,
+} from '@/lib/paper-api';
 import { Button } from '@/components/Button';
 import { formatCurrency } from '@/lib/formatters';
 import { useTheme, useStableToken } from '@/lib/hooks';
@@ -19,9 +19,9 @@ import { useTheme, useStableToken } from '@/lib/hooks';
 const toNumber = (value: string | undefined) => Number(value || 0);
 
 type WalletState = {
-	status: DemoStatus | null;
-	portfolio: DemoPortfolioResponse | null;
-	holdings: DemoHoldingsResponse | null;
+	status: PaperStatus | null;
+	portfolio: PaperPortfolioResponse | null;
+	holdings: PaperHoldingsResponse | null;
 };
 
 export default function WalletBalancesScreen() {
@@ -44,17 +44,17 @@ export default function WalletBalancesScreen() {
 
 		try {
 			setIsLoading(true);
-			const status = await getDemoStatus(stableGetToken);
+			const status = await getPaperStatus(stableGetToken);
 			if (!status.hasDemoAccount) {
 				setState({ status, portfolio: null, holdings: null });
 				setError(null);
 				return;
 			}
 
-			const account = await getDemoAccount(stableGetToken);
+			const account = await getPaperAccount(stableGetToken);
 			const [portfolio, holdings] = await Promise.all([
-				getDemoPortfolio(account.userId, stableGetToken),
-				getDemoHoldings(account.userId, stableGetToken),
+				getPaperPortfolio(account.userId, stableGetToken),
+				getPaperHoldings(account.userId, stableGetToken),
 			]);
 			setState({ status, portfolio, holdings });
 			setError(null);

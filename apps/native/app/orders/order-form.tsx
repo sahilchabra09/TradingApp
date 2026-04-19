@@ -12,26 +12,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
-	activateDemoAccount,
-	getDemoAccount,
-	getDemoMarketData,
-	getDemoStatus,
-	placeDemoTrade,
-	type DemoAccount,
-	type DemoMarketData,
-	type DemoStatus,
-	type DemoTradeResult,
-} from '@/lib/demo-api';
+	activatePaperAccount,
+	getPaperAccount,
+	getPaperMarketData,
+	getPaperStatus,
+	placePaperTrade,
+	type PaperAccount,
+	type PaperMarketData,
+	type PaperStatus,
+	type PaperTradeResult,
+} from '@/lib/paper-api';
 import { formatCurrency, formatRelativeTime } from '@/lib/formatters';
-import { useDemoMarketStream, useStableToken } from '@/lib/hooks';
+import { usePaperMarketStream, useStableToken } from '@/lib/hooks';
 
 const DEFAULT_SLIPPAGE_PCT = 0.1;
 const toNumber = (value: string | undefined | null) => Number(value || 0);
 
 type OrderContext = {
-	status: DemoStatus | null;
-	account: DemoAccount | null;
-	quote: DemoMarketData | null;
+	status: PaperStatus | null;
+	account: PaperAccount | null;
+	quote: PaperMarketData | null;
 	quoteError: string | null;
 };
 
@@ -47,7 +47,7 @@ export default function OrderFormScreen() {
 	const [isActivatingDemo, setIsActivatingDemo] = useState(false);
 	const [isLoadingContext, setIsLoadingContext] = useState(false);
 	const [isLoadingQuote, setIsLoadingQuote] = useState(false);
-	const [tradeResult, setTradeResult] = useState<DemoTradeResult | null>(null);
+	const [tradeResult, setTradeResult] = useState<PaperTradeResult | null>(null);
 	const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 	const [data, setData] = useState<OrderContext>({
 		status: null,
@@ -71,11 +71,11 @@ export default function OrderFormScreen() {
 
 		try {
 			setIsLoadingContext(true);
-			const status = await getDemoStatus(stableGetToken);
-			let account: DemoAccount | null = null;
+			const status = await getPaperStatus(stableGetToken);
+			let account: PaperAccount | null = null;
 			if (status.hasDemoAccount) {
 				try {
-					account = await getDemoAccount(stableGetToken);
+					account = await getPaperAccount(stableGetToken);
 				} catch {
 					account = null;
 				}
@@ -98,7 +98,7 @@ export default function OrderFormScreen() {
 
 		try {
 			setIsLoadingQuote(true);
-			const quote = await getDemoMarketData(normalizedSymbol, stableGetToken);
+			const quote = await getPaperMarketData(normalizedSymbol, stableGetToken);
 			setData((current) => ({
 				...current,
 				quote,
@@ -124,7 +124,7 @@ export default function OrderFormScreen() {
 		void loadQuoteSnapshot();
 	}, [loadQuoteSnapshot]);
 
-	const { connectionState, subscribe } = useDemoMarketStream({
+	const { connectionState, subscribe } = usePaperMarketStream({
 		enabled: isSignedIn && normalizedSymbol.length > 0,
 		symbols: normalizedSymbol ? [normalizedSymbol] : [],
 		getToken: stableGetToken,
@@ -191,7 +191,7 @@ export default function OrderFormScreen() {
 		try {
 			setIsActivatingDemo(true);
 			setSubmitError(null);
-			await activateDemoAccount(stableGetToken);
+			await activatePaperAccount(stableGetToken);
 			await loadStatusAndAccount();
 			Alert.alert('Demo account activated', 'Your demo wallet is ready for paper trading.');
 		} catch (err) {
@@ -223,7 +223,7 @@ export default function OrderFormScreen() {
 			setIsSubmitting(true);
 			setSubmitError(null);
 
-			const result = await placeDemoTrade(
+			const result = await placePaperTrade(
 				{
 					symbol: trimmedSymbol,
 					side,

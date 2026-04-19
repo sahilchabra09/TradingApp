@@ -25,7 +25,7 @@ export interface Env {
 	APCA_API_STREAM_URL?: string;
 	APCA_DATA_FEED?: string;
 	ALPACA_SYMBOL_ALIASES?: string;
-	DEMO_SLIPPAGE_PCT?: string;
+	PAPER_SLIPPAGE_PCT?: string;
 	CLERK_JWT_SECRET?: string;
 
 	// Application
