@@ -65,7 +65,9 @@ const FRESH_TRADE_WINDOW_MS = 45 * 1000;
 declare global {
 	var __alpacaClient: Alpaca | undefined;
 	var __alpacaWsInitialized: boolean | undefined;
+	var __alpacaWsAuthenticated: boolean | undefined;
 	var __alpacaWsSubscribedSymbols: Set<string> | undefined;
+	var __alpacaSymbolRefCounts: Map<string, number> | undefined;
 	var __alpacaLastTrades: Map<string, CachedTrade> | undefined;
 	var __alpacaAssetCache: Map<string, CachedAsset> | undefined;
 	var __alpacaTradeListeners: Set<(tick: AlpacaTradeTick) => void> | undefined;
@@ -172,6 +174,13 @@ function getTradeListeners() {
 	return globalThis.__alpacaTradeListeners;
 }
 
+function getSymbolRefCounts() {
+	if (!globalThis.__alpacaSymbolRefCounts) {
+		globalThis.__alpacaSymbolRefCounts = new Map();
+	}
+	return globalThis.__alpacaSymbolRefCounts;
+}
+
 function extractErrorMessage(error: unknown) {
 	if (error instanceof Error) {
 		return error.message;
@@ -242,12 +251,15 @@ function connectMarketDataWebsocket() {
 	});
 
 	websocket.onStateChange((state: string) => {
+		// Track authenticated state ourselves instead of accessing the private SDK field.
+		globalThis.__alpacaWsAuthenticated = state.toLowerCase() === 'authenticated';
 		if (process.env.NODE_ENV !== 'production') {
 			console.log(`[Alpaca WS] state: ${state}`);
 		}
 	});
 
 	websocket.onConnect(() => {
+		globalThis.__alpacaWsAuthenticated = true;
 		const symbols = [...subscribedSymbols];
 		if (!symbols.length) {
 			return;
@@ -293,8 +305,7 @@ function subscribeSymbolsForRealtime(symbols: string[]) {
 		return;
 	}
 
-	const currentState = String((websocket as any)?.session?.currentState || '').toLowerCase();
-	if (currentState !== 'authenticated') {
+	if (!globalThis.__alpacaWsAuthenticated) {
 		return;
 	}
 
@@ -312,6 +323,58 @@ export function onAlpacaTradeTick(listener: (tick: AlpacaTradeTick) => void) {
 	return () => {
 		listeners.delete(listener);
 	};
+}
+
+/**
+ * Increment the ref count for a provider symbol owned by a WebSocket connection.
+ * Call once per new symbol per connection when the connection subscribes.
+ */
+export function trackConnectionSymbol(providerSymbol: string): void {
+	const n = normalizeSymbol(providerSymbol);
+	const refCounts = getSymbolRefCounts();
+	refCounts.set(n, (refCounts.get(n) ?? 0) + 1);
+}
+
+/**
+ * Decrement ref counts for provider symbols released by a WebSocket connection.
+ * When a symbol's count reaches zero it is removed from the global subscription
+ * set and unsubscribed from the Alpaca stream, preventing unbounded growth.
+ * Safe to call even when the stream is not yet authenticated — the subscription
+ * is just removed from the tracking set so it won't be re-added on reconnect.
+ */
+export function untrackConnectionSymbols(providerSymbols: string[]): void {
+	if (!providerSymbols.length) return;
+
+	const refCounts = getSymbolRefCounts();
+	const subscribedSymbols = getSubscribedSymbols();
+	const toUnsubscribe: string[] = [];
+
+	for (const sym of providerSymbols) {
+		const n = normalizeSymbol(sym);
+		const prev = refCounts.get(n) ?? 0;
+		if (prev <= 1) {
+			refCounts.delete(n);
+			subscribedSymbols.delete(n);
+			toUnsubscribe.push(n);
+		} else {
+			refCounts.set(n, prev - 1);
+		}
+	}
+
+	if (!toUnsubscribe.length) return;
+
+	if (process.env.NODE_ENV !== 'production') {
+		console.log(`[Alpaca WS] unsubscribing unused symbols: ${toUnsubscribe.join(', ')}`);
+	}
+
+	if (!globalThis.__alpacaWsAuthenticated) return;
+
+	try {
+		const client = getAlpacaClient();
+		(client.data_stream_v2 as any).unsubscribeFromTrades(toUnsubscribe);
+	} catch (error) {
+		console.warn('[Alpaca WS] unsubscribeFromTrades failed:', extractErrorMessage(error));
+	}
 }
 
 function getFreshCachedTrade(symbol: string) {

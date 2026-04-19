@@ -288,6 +288,10 @@ type UsePaperMarketStreamOptions = {
 	onQuote?: (quote: LiveQuoteUpdate) => void;
 	onError?: (message: string) => void;
 	onReady?: () => void;
+	/** Called when the server confirms a symbol subscription. */
+	onSubscribed?: (symbols: string[]) => void;
+	/** Called when the server confirms a symbol unsubscription. */
+	onUnsubscribed?: (symbols: string[]) => void;
 };
 
 function toWebSocketBaseUrl(rawBaseUrl: string) {
@@ -307,12 +311,29 @@ function toWebSocketBaseUrl(rawBaseUrl: string) {
 	return `ws://${normalized}`;
 }
 
-const PAPER_STREAM_BASE_URL = toWebSocketBaseUrl(
-	process.env.EXPO_PUBLIC_SERVER_URL || 'http://localhost:3000'
-);
+// Reconnect parameters — exponential backoff with jitter.
+const RECONNECT_BASE_MS     = 1_000;
+const RECONNECT_MAX_MS      = 30_000;
+const RECONNECT_MAX_ATTEMPTS = 8;
+
+function getReconnectDelay(attempt: number): number {
+	const exp    = RECONNECT_BASE_MS * Math.pow(2, attempt);
+	const jitter = Math.random() * 500;
+	return Math.min(exp + jitter, RECONNECT_MAX_MS);
+}
 
 /**
- * Maintains a realtime websocket stream for paper trading market data updates.
+ * Maintains a realtime WebSocket stream for paper trading market data updates.
+ *
+ * Auth note: the Authorization header is forwarded via the third argument of
+ * the WebSocket constructor — a React Native / Expo extension that is NOT
+ * available in browser WebSocket. This is intentional; the server's requireAuth
+ * middleware requires a Bearer token on the upgrade request.
+ *
+ * Reconnect: automatically reconnects with exponential backoff (up to
+ * RECONNECT_MAX_ATTEMPTS times) whenever the socket closes unexpectedly.
+ * A deliberate unmount or symbol-set change closes the socket cleanly without
+ * triggering reconnect.
  */
 export const usePaperMarketStream = ({
 	enabled = true,
@@ -322,6 +343,8 @@ export const usePaperMarketStream = ({
 	onQuote,
 	onError,
 	onReady,
+	onSubscribed,
+	onUnsubscribed,
 }: UsePaperMarketStreamOptions) => {
 	const socketRef = useRef<WebSocket | null>(null);
 	const callbacksRef = useRef({
@@ -329,9 +352,11 @@ export const usePaperMarketStream = ({
 		onQuote,
 		onError,
 		onReady,
+		onSubscribed,
+		onUnsubscribed,
 	});
 	const [connectionState, setConnectionState] = useState<
-		'idle' | 'connecting' | 'open' | 'closed' | 'error'
+		'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed' | 'error'
 	>('idle');
 	const [lastMessageAt, setLastMessageAt] = useState<Date | null>(null);
 	const symbolsKey = [...new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))]
@@ -344,8 +369,10 @@ export const usePaperMarketStream = ({
 			onQuote,
 			onError,
 			onReady,
+			onSubscribed,
+			onUnsubscribed,
 		};
-	}, [onSnapshot, onQuote, onError, onReady]);
+	}, [onSnapshot, onQuote, onError, onReady, onSubscribed, onUnsubscribed]);
 
 	const send = useCallback((payload: object) => {
 		const socket = socketRef.current;
@@ -363,49 +390,80 @@ export const usePaperMarketStream = ({
 			return;
 		}
 
-		const uniqueSymbols = symbolsKey ? symbolsKey.split(',') : [];
-		const symbolsParam = uniqueSymbols.join(',');
+		const symbolsParam = symbolsKey; // already deduped + comma-joined
 		let isDisposed = false;
+		let reconnectAttempt = 0;
+		let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+		// Forward-declare so connect() and scheduleReconnect() can reference each
+		// other via closure. Both are only ever invoked asynchronously (setTimeout /
+		// socket event callbacks), so the binding is always initialised before use.
+		let scheduleReconnect: () => void = () => {};
 
 		const connect = async () => {
-			setConnectionState('connecting');
+			if (isDisposed) return;
+			setConnectionState(reconnectAttempt === 0 ? 'connecting' : 'reconnecting');
+
 			const token = await getToken();
 			if (!token || isDisposed) {
 				if (!isDisposed) {
 					setConnectionState('error');
-					callbacksRef.current.onError?.('Please sign in again to start realtime market data.');
+					callbacksRef.current.onError?.(
+						'Please sign in again to start realtime market data.'
+					);
 				}
 				return;
 			}
 
-			const streamUrl = `${PAPER_STREAM_BASE_URL}/api/paper-trading/stream?symbols=${encodeURIComponent(symbolsParam)}`;
+			// Compute the WS base URL here (not at module load time) so that the
+			// value is always current and misconfiguration is caught early in dev.
+			const rawServerUrl = process.env.EXPO_PUBLIC_SERVER_URL;
+			if (!rawServerUrl && typeof __DEV__ !== 'undefined' && __DEV__) {
+				console.warn(
+					'[PaperMarketStream] EXPO_PUBLIC_SERVER_URL is not set. ' +
+						'Falling back to ws://localhost:3000. ' +
+						'Set this env var before building for non-local environments.'
+				);
+			}
+			const wsBase     = toWebSocketBaseUrl(rawServerUrl || 'http://localhost:3000');
+			const streamUrl  = `${wsBase}/api/paper-trading/stream?symbols=${encodeURIComponent(symbolsParam)}`;
+
+			// React Native / Expo supports passing arbitrary HTTP headers on the
+			// WebSocket upgrade request via the third constructor argument.
+			// This is intentional and required — browser WebSocket does not support it.
 			const socket = new (WebSocket as any)(
 				streamUrl,
 				undefined,
-				{ headers: { Authorization: `Bearer ${token}` } } as any
+				{
+					headers: {
+						Authorization: `Bearer ${token}`,
+						// Prevents ngrok's browser-warning interstitial from intercepting
+						// the WS upgrade when the dev server is tunnelled through ngrok.
+						'ngrok-skip-browser-warning': '1',
+					},
+				} as any
 			) as WebSocket;
 			socketRef.current = socket;
 
 			socket.onopen = () => {
-				if (isDisposed) {
-					return;
-				}
+				if (isDisposed) return;
+				reconnectAttempt = 0; // reset backoff on successful connection
 				setConnectionState('open');
 			};
 
 			socket.onmessage = (event) => {
-				if (isDisposed || typeof event.data !== 'string') {
-					return;
-				}
+				if (isDisposed || typeof event.data !== 'string') return;
 
 				try {
-				const message = JSON.parse(event.data) as {
-					type?: string;
-					quote?: PaperMarketData | LiveQuoteUpdate;
-					message?: string;
-				};
+					const message = JSON.parse(event.data) as {
+						type?: string;
+						quote?: PaperMarketData | LiveQuoteUpdate;
+						symbols?: string[];
+						message?: string;
+					};
 
 					setLastMessageAt(new Date());
+
 					switch (message.type) {
 						case 'ready':
 							callbacksRef.current.onReady?.();
@@ -420,6 +478,19 @@ export const usePaperMarketStream = ({
 								callbacksRef.current.onQuote?.(message.quote as LiveQuoteUpdate);
 							}
 							return;
+						case 'subscribed':
+							if (message.symbols) {
+								callbacksRef.current.onSubscribed?.(message.symbols);
+							}
+							return;
+						case 'unsubscribed':
+							if (message.symbols) {
+								callbacksRef.current.onUnsubscribed?.(message.symbols);
+							}
+							return;
+						case 'pong':
+							// Keepalive acknowledgement — lastMessageAt is already updated above.
+							return;
 						case 'error':
 							callbacksRef.current.onError?.(
 								message.message || 'Realtime market stream reported an error.'
@@ -428,33 +499,57 @@ export const usePaperMarketStream = ({
 						default:
 							return;
 					}
-				} catch (error) {
+				} catch (err) {
 					callbacksRef.current.onError?.(
-						error instanceof Error ? error.message : 'Invalid realtime market stream payload.'
+						err instanceof Error
+							? err.message
+							: 'Invalid realtime market stream payload.'
 					);
 				}
 			};
 
 			socket.onerror = () => {
-				if (isDisposed) {
-					return;
-				}
-				setConnectionState('error');
-				callbacksRef.current.onError?.('Realtime market stream failed.');
+				if (isDisposed) return;
+				callbacksRef.current.onError?.(
+					reconnectAttempt < RECONNECT_MAX_ATTEMPTS
+						? 'Realtime market stream error. Reconnecting\u2026'
+						: 'Realtime market stream failed.'
+				);
+				scheduleReconnect();
 			};
 
 			socket.onclose = () => {
-				if (isDisposed) {
-					return;
-				}
-				setConnectionState('closed');
+				if (isDisposed) return;
+				scheduleReconnect();
 			};
+		};
+
+		scheduleReconnect = () => {
+			if (isDisposed) return;
+			if (reconnectAttempt >= RECONNECT_MAX_ATTEMPTS) {
+				setConnectionState('error');
+				callbacksRef.current.onError?.(
+					'Realtime market stream could not reconnect. Please reload.'
+				);
+				return;
+			}
+			const delay = getReconnectDelay(reconnectAttempt);
+			reconnectAttempt++;
+			setConnectionState('reconnecting');
+			reconnectTimer = setTimeout(() => {
+				reconnectTimer = null;
+				if (!isDisposed) void connect();
+			}, delay);
 		};
 
 		void connect();
 
 		return () => {
 			isDisposed = true;
+			if (reconnectTimer !== null) {
+				clearTimeout(reconnectTimer);
+				reconnectTimer = null;
+			}
 			const socket = socketRef.current;
 			if (socket && socket.readyState !== WebSocket.CLOSED) {
 				socket.close();

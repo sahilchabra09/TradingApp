@@ -21,6 +21,8 @@ import {
 	onAlpacaTradeTick,
 	resolveAlpacaSymbols,
 	searchAlpacaAssets,
+	trackConnectionSymbol,
+	untrackConnectionSymbols,
 } from '../services/alpaca';
 import {
 	type PaperHoldingSnapshot,
@@ -761,6 +763,9 @@ paperTradingRoutes.get(
 		const initialRequestedSymbols = parseQuerySymbols(c.req.query('symbols'));
 		const providerToRequested = new Map<string, Set<string>>();
 		const requestedToProvider = new Map<string, string>();
+		// Tracks provider symbols this connection has ref-counted so they can be
+		// properly released when the connection closes (fix: symbols never leaked).
+		const trackedProviderSymbols = new Set<string>();
 		let unsubscribeTradeListener = () => {};
 
 		const sendJson = (ws: { readyState: number; send: (data: string) => void }, payload: object) => {
@@ -791,6 +796,11 @@ paperTradingRoutes.get(
 						oldSet?.delete(resolved.requestedSymbol);
 						if (oldSet && oldSet.size === 0) {
 							providerToRequested.delete(existingProvider);
+							// Old provider has no remaining requested symbols — release its ref
+							if (trackedProviderSymbols.has(existingProvider)) {
+								trackedProviderSymbols.delete(existingProvider);
+								untrackConnectionSymbols([existingProvider]);
+							}
 						}
 					}
 
@@ -798,6 +808,12 @@ paperTradingRoutes.get(
 					const providerSet = providerToRequested.get(resolved.providerSymbol) || new Set<string>();
 					providerSet.add(resolved.requestedSymbol);
 					providerToRequested.set(resolved.providerSymbol, providerSet);
+
+					// Acquire a ref count for this provider symbol on behalf of this connection
+					if (!trackedProviderSymbols.has(resolved.providerSymbol)) {
+						trackedProviderSymbols.add(resolved.providerSymbol);
+						trackConnectionSymbol(resolved.providerSymbol);
+					}
 				}
 
 				const snapshots = await getAlpacaSnapshots(uniqueRequested);
@@ -843,6 +859,11 @@ paperTradingRoutes.get(
 				providerSet?.delete(requested);
 				if (providerSet && providerSet.size === 0) {
 					providerToRequested.delete(providerSymbol);
+					// Provider has no remaining requested symbols — release its ref count
+					if (trackedProviderSymbols.has(providerSymbol)) {
+						trackedProviderSymbols.delete(providerSymbol);
+						untrackConnectionSymbols([providerSymbol]);
+					}
 				}
 				removed.push(requested);
 			}
@@ -912,9 +933,15 @@ paperTradingRoutes.get(
 			},
 			onClose: () => {
 				unsubscribeTradeListener();
+				const remaining = [...trackedProviderSymbols];
+				trackedProviderSymbols.clear();
+				untrackConnectionSymbols(remaining);
 			},
 			onError: () => {
 				unsubscribeTradeListener();
+				const remaining = [...trackedProviderSymbols];
+				trackedProviderSymbols.clear();
+				untrackConnectionSymbols(remaining);
 			},
 		};
 	})
