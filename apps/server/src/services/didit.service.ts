@@ -1,11 +1,19 @@
 /**
  * Didit Identity Verification Service - V3 API
- * Handles session creation, retrieval, and webhook verification.
+ *
+ * Fixes applied:
+ *  1. Correct X-Signature-V2 verification (sort-keys canonical JSON, not raw body)
+ *  2. X-Signature-Simple fallback (timestamp:session_id:status:webhook_type)
+ *  3. Updated DiditSessionDecision to V3 plural-array structure
+ *  4. AES-256-GCM encryption for PII stored in verification_data
  */
 
 import crypto from 'crypto';
 
-// Configuration
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
 const DIDIT_CONFIG = {
 	baseUrl: process.env.DIDIT_BASE_URL || 'https://verification.didit.me',
 	apiKey: process.env.DIDIT_API_KEY || '',
@@ -13,7 +21,10 @@ const DIDIT_CONFIG = {
 	workflowId: process.env.DIDIT_WORKFLOW_ID || '',
 };
 
-// Types - matches actual Didit V3 response
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
 export interface CreateSessionResponse {
 	session_id: string;
 	session_token: string;
@@ -25,12 +36,27 @@ export interface CreateSessionResponse {
 
 export interface WebhookPayload {
 	session_id: string;
-	status: 'Not Started' | 'In Progress' | 'Approved' | 'Declined' | 'Expired' | 'Abandoned';
+	status: 'Not Started' | 'In Progress' | 'In Review' | 'Approved' | 'Declined' | 'Expired' | 'Abandoned';
+	webhook_type?: string;
 	vendor_data: string;
 	workflow_id: string;
+	timestamp?: number;
+	created_at?: number;
+	decision?: DiditSessionDecision;
 }
 
-// Session decision response from /v3/session/{sessionId}/decision/
+// Warning shape used across all V3 feature arrays
+interface DiditWarning {
+	risk?: string;
+	short_description?: string;
+	long_description?: string;
+	log_type?: string;
+}
+
+// ---------------------------------------------------------------------------
+// V3 Session Decision — plural arrays
+// ---------------------------------------------------------------------------
+
 export interface DiditSessionDecision {
 	session_id: string;
 	session_number?: number;
@@ -38,10 +64,11 @@ export interface DiditSessionDecision {
 	status: string;
 	workflow_id?: string;
 	vendor_data?: string;
-	created_at?: string;
-	
-	// ID Verification details
-	id_verification?: {
+	features?: string[];
+
+	// ID Verification (array, one entry per document checked)
+	id_verifications?: Array<{
+		node_id?: string;
 		status?: string;
 		document_type?: string;
 		document_number?: string;
@@ -56,61 +83,62 @@ export interface DiditSessionDecision {
 		issuing_state?: string;
 		issuing_state_name?: string;
 		gender?: string;
+		nationality?: string;
 		address?: string;
 		formatted_address?: string;
 		place_of_birth?: string;
-		nationality?: string;
 		portrait_image?: string;
 		front_image?: string;
 		back_image?: string;
-		warnings?: Array<{ code?: string; message?: string }>;
-	};
-	
-	// Liveness check
-	liveness?: {
+		warnings?: DiditWarning[];
+	}>;
+
+	// Liveness checks
+	liveness_checks?: Array<{
+		node_id?: string;
 		status?: string;
 		method?: string;
 		score?: number;
 		reference_image?: string;
 		video_url?: string;
 		age_estimation?: number;
-		warnings?: Array<{ code?: string; message?: string }>;
-	};
-	
-	// Face match
-	face_match?: {
+		warnings?: DiditWarning[];
+	}>;
+
+	// Face match results
+	face_matches?: Array<{
+		node_id?: string;
 		status?: string;
 		score?: number;
 		source_image?: string;
 		target_image?: string;
-		warnings?: Array<{ code?: string; message?: string }>;
-	};
-	
-	// IP Analysis
-	ip_analysis?: {
-		status?: string;
-		device_brand?: string;
-		device_model?: string;
-		browser_family?: string;
-		os_family?: string;
-		platform?: string;
-		ip_country?: string;
-		ip_country_code?: string;
-		ip_city?: string;
-		ip_address?: string;
-		is_vpn_or_tor?: boolean;
-		is_data_center?: boolean;
-		warnings?: Array<{ code?: string; message?: string }>;
-	};
-	
-	// AML screening
-	aml?: {
+		warnings?: DiditWarning[];
+	}>;
+
+	// AML screenings
+	aml_screenings?: Array<{
+		node_id?: string;
 		status?: string;
 		total_hits?: number;
 		score?: number;
-	};
+		entity_type?: string;
+	}>;
 
-	// Reviews
+	// Phone verification
+	phone_verifications?: Array<{
+		node_id?: string;
+		status?: string;
+		full_number?: string;
+	}>;
+
+	// Email verification
+	email_verifications?: Array<{
+		node_id?: string;
+		status?: string;
+		email?: string;
+	}>;
+
+	// Reviews (manual review comments)
 	reviews?: Array<{
 		user?: string;
 		new_status?: string;
@@ -119,13 +147,31 @@ export interface DiditSessionDecision {
 	}>;
 }
 
+// ---------------------------------------------------------------------------
+// Encrypted envelope — stored in verification_data JSONB column
+// ---------------------------------------------------------------------------
+
+interface EncryptedEnvelope {
+	v: 1;
+	enc: true;
+	iv: string;   // base64 12-byte IV
+	tag: string;  // base64 16-byte GCM auth tag
+	data: string; // base64 ciphertext
+}
+
+// ---------------------------------------------------------------------------
+// DiditService
+// ---------------------------------------------------------------------------
+
 export class DiditService {
-	/**
-	 * Create a verification session
-	 */
+
+	// -------------------------------------------------------------------------
+	// Session management
+	// -------------------------------------------------------------------------
+
 	static async createSession(
 		userId: string,
-		callbackUrl: string
+		callbackUrl: string,
 	): Promise<CreateSessionResponse> {
 		if (!DIDIT_CONFIG.workflowId) {
 			throw new Error('DIDIT_WORKFLOW_ID not configured');
@@ -151,92 +197,265 @@ export class DiditService {
 		}
 
 		const result = await response.json() as CreateSessionResponse;
-		console.log('Didit API response:', JSON.stringify(result, null, 2));
+		console.log('[Didit] Session created:', result.session_id);
 		return result;
 	}
 
 	/**
-	 * Get session decision/results from Didit API
-	 * Endpoint: GET /v3/session/{sessionId}/decision/
+	 * Fetch full decision from Didit — GET /v3/session/{sessionId}/decision/
 	 */
 	static async getSessionDecision(sessionId: string): Promise<DiditSessionDecision | null> {
 		if (!DIDIT_CONFIG.apiKey) {
-			console.error('DIDIT_API_KEY not configured');
+			console.error('[Didit] DIDIT_API_KEY not configured');
 			return null;
 		}
 
 		try {
-			const response = await fetch(`${DIDIT_CONFIG.baseUrl}/v3/session/${sessionId}/decision/`, {
-				method: 'GET',
-				headers: {
-					'x-api-key': DIDIT_CONFIG.apiKey,
+			const response = await fetch(
+				`${DIDIT_CONFIG.baseUrl}/v3/session/${sessionId}/decision/`,
+				{
+					method: 'GET',
+					headers: { 'x-api-key': DIDIT_CONFIG.apiKey },
 				},
-			});
+			);
 
 			if (!response.ok) {
 				const error = await response.text();
-				console.error('Didit getSessionDecision failed:', response.status, error);
+				console.error(`[Didit] getSessionDecision failed for ${sessionId}:`, response.status, error);
 				return null;
 			}
 
 			const result = await response.json() as DiditSessionDecision;
-			console.log('Didit session decision:', JSON.stringify(result, null, 2));
+			console.log(`[Didit] Decision fetched for ${sessionId}: status=${result.status}`);
 			return result;
 		} catch (error) {
-			console.error('Failed to fetch Didit session decision:', error);
+			console.error('[Didit] Failed to fetch session decision:', error);
 			return null;
 		}
 	}
 
-	/**
-	 * Verify webhook signature (V3 format)
-	 */
+	// -------------------------------------------------------------------------
+	// Webhook signature verification
+	//
+	// Tries in order:
+	//   1. X-Signature-V2  – canonical sorted-keys JSON (recommended by Didit)
+	//   2. X-Signature-Simple – "timestamp:session_id:status:webhook_type"
+	//
+	// Returns true if either method passes.
+	// -------------------------------------------------------------------------
+
 	static verifyWebhookSignature(
-		payload: string,
-		signature: string,
-		timestamp: string
+		rawPayload: string,
+		signatureV2: string,
+		timestamp: string,
+		signatureSimple?: string,
 	): boolean {
 		if (!DIDIT_CONFIG.webhookSecret) {
-			console.error('DIDIT_WEBHOOK_SECRET not configured');
+			console.error('[Didit] DIDIT_WEBHOOK_SECRET not configured');
 			return false;
 		}
 
-		// Check timestamp freshness (5 min window)
+		// Timestamp freshness check (5-minute window)
 		const now = Math.floor(Date.now() / 1000);
 		const webhookTime = parseInt(timestamp, 10);
-		if (Math.abs(now - webhookTime) > 300) {
-			console.error('Webhook timestamp expired');
+		if (isNaN(webhookTime) || Math.abs(now - webhookTime) > 300) {
+			console.error('[Didit] Webhook timestamp expired or invalid:', timestamp);
 			return false;
 		}
 
-		// Verify signature
-		const expected = crypto
-			.createHmac('sha256', DIDIT_CONFIG.webhookSecret)
-			.update(payload)
-			.digest('hex');
+		let jsonBody: any;
+		try {
+			jsonBody = JSON.parse(rawPayload);
+		} catch {
+			console.error('[Didit] Webhook payload is not valid JSON');
+			return false;
+		}
+
+		// ---- Method 1: X-Signature-V2 ----------------------------------------
+		// Canonical JSON: parse → shortenFloats → sortKeys → JSON.stringify
+		// Node.js / Bun: JSON.stringify keeps Unicode unescaped by default (José → "José")
+		// which matches what Didit's Python backend uses with ensure_ascii=False.
+		if (signatureV2) {
+			const processed  = DiditService.shortenFloats(jsonBody);
+			const sorted     = DiditService.sortKeysRecursive(processed);
+			const canonical  = JSON.stringify(sorted);
+			const expected   = crypto
+				.createHmac('sha256', DIDIT_CONFIG.webhookSecret)
+				.update(canonical, 'utf8')
+				.digest('hex');
+
+			if (DiditService.safeEqual(signatureV2, expected)) {
+				console.log('[Didit] Webhook verified via X-Signature-V2');
+				return true;
+			}
+			console.warn('[Didit] X-Signature-V2 mismatch — trying fallback');
+		}
+
+		// ---- Method 2: X-Signature-Simple ------------------------------------
+		// Signs only: "timestamp:session_id:status:webhook_type"
+		const sigSimple = signatureSimple ?? '';
+		if (sigSimple) {
+			const canonical = [
+				String(jsonBody.timestamp  ?? ''),
+				String(jsonBody.session_id ?? ''),
+				String(jsonBody.status     ?? ''),
+				String(jsonBody.webhook_type ?? ''),
+			].join(':');
+
+			const expected = crypto
+				.createHmac('sha256', DIDIT_CONFIG.webhookSecret)
+				.update(canonical)
+				.digest('hex');
+
+			if (DiditService.safeEqual(sigSimple, expected)) {
+				console.log('[Didit] Webhook verified via X-Signature-Simple');
+				return true;
+			}
+			console.warn('[Didit] X-Signature-Simple mismatch');
+		}
+
+		console.error('[Didit] All signature methods failed');
+		return false;
+	}
+
+	// -------------------------------------------------------------------------
+	// Status mapping
+	// -------------------------------------------------------------------------
+
+	static mapStatus(
+		diditStatus: string,
+	): 'pending' | 'approved' | 'declined' | 'expired' | 'abandoned' {
+		switch (diditStatus) {
+			case 'Approved':  return 'approved';
+			case 'Declined':  return 'declined';
+			case 'Expired':   return 'expired';
+			case 'Abandoned': return 'abandoned';
+			default:          return 'pending'; // In Progress, In Review, Not Started
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// AES-256-GCM encryption helpers for PII stored in verification_data
+	//
+	// Requires ENCRYPTION_KEY env var = 64 hex chars (32 bytes).
+	// Generate with: openssl rand -hex 32
+	// -------------------------------------------------------------------------
+
+	static encryptVerificationData(plainObject: object): object {
+		const hexKey = process.env.ENCRYPTION_KEY ?? '';
+		if (hexKey.length !== 64) {
+			// Encryption not configured — store plain (log a warning)
+			console.warn('[Didit] ENCRYPTION_KEY not set or wrong length; storing verification data unencrypted');
+			return plainObject;
+		}
+
+		const key = Buffer.from(hexKey, 'hex');
+		const iv  = crypto.randomBytes(12);
+
+		const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+		const plaintext = JSON.stringify(plainObject);
+		let ciphertext  = cipher.update(plaintext, 'utf8', 'base64');
+		ciphertext     += cipher.final('base64');
+		const tag = cipher.getAuthTag();
+
+		const envelope: EncryptedEnvelope = {
+			v:    1,
+			enc:  true,
+			iv:   iv.toString('base64'),
+			tag:  tag.toString('base64'),
+			data: ciphertext,
+		};
+		return envelope;
+	}
+
+	static decryptVerificationData(stored: unknown): object | null {
+		if (!stored || typeof stored !== 'object') return null;
+
+		const obj = stored as Record<string, unknown>;
+
+		// Not encrypted (legacy plain data or encryption not configured)
+		if (!obj.enc) {
+			return obj as object;
+		}
+
+		const hexKey = process.env.ENCRYPTION_KEY ?? '';
+		if (hexKey.length !== 64) {
+			console.error('[Didit] ENCRYPTION_KEY missing — cannot decrypt verification data');
+			return null;
+		}
 
 		try {
-			return crypto.timingSafeEqual(
-				Buffer.from(signature),
-				Buffer.from(expected)
+			const key  = Buffer.from(hexKey, 'hex');
+			const iv   = Buffer.from(obj.iv as string, 'base64');
+			const tag  = Buffer.from(obj.tag as string, 'base64');
+
+			const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+			decipher.setAuthTag(tag);
+
+			let plaintext  = decipher.update(obj.data as string, 'base64', 'utf8');
+			plaintext     += decipher.final('utf8');
+
+			return JSON.parse(plaintext) as object;
+		} catch (error) {
+			console.error('[Didit] Decryption failed:', error);
+			return null;
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Private helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Process whole-number floats → integers to match server-side behaviour.
+	 * e.g.  89.0 → 89,  65.43 stays 65.43
+	 */
+	private static shortenFloats(data: unknown): unknown {
+		if (Array.isArray(data)) return data.map(DiditService.shortenFloats);
+		if (data !== null && typeof data === 'object') {
+			return Object.fromEntries(
+				Object.entries(data as Record<string, unknown>).map(
+					([k, v]) => [k, DiditService.shortenFloats(v)],
+				),
 			);
+		}
+		if (
+			typeof data === 'number' &&
+			!Number.isInteger(data) &&
+			data % 1 === 0
+		) {
+			return Math.trunc(data);
+		}
+		return data;
+	}
+
+	/** Recursively sort object keys (required for X-Signature-V2 canonical form). */
+	private static sortKeysRecursive(data: unknown): unknown {
+		if (Array.isArray(data)) return data.map(DiditService.sortKeysRecursive);
+		if (data !== null && typeof data === 'object') {
+			return Object.keys(data as Record<string, unknown>)
+				.sort()
+				.reduce(
+					(acc, key) => {
+						acc[key] = DiditService.sortKeysRecursive(
+							(data as Record<string, unknown>)[key],
+						);
+						return acc;
+					},
+					{} as Record<string, unknown>,
+				);
+		}
+		return data;
+	}
+
+	/** Constant-time string comparison to prevent timing attacks. */
+	private static safeEqual(a: string, b: string): boolean {
+		try {
+			const bufA = Buffer.from(a, 'utf8');
+			const bufB = Buffer.from(b, 'utf8');
+			return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
 		} catch {
 			return false;
 		}
 	}
-
-	/**
-	 * Map Didit status to our internal status
-	 */
-	static mapStatus(diditStatus: string): 'pending' | 'approved' | 'declined' | 'expired' | 'abandoned' {
-		switch (diditStatus) {
-			case 'Approved': return 'approved';
-			case 'Declined': return 'declined';
-			case 'Expired': return 'expired';
-			case 'Abandoned': return 'abandoned';
-			default: return 'pending';
-		}
-	}
 }
-
-

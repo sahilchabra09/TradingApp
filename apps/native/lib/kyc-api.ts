@@ -26,6 +26,7 @@ export type UserKycStatus = 'not_started' | 'pending' | 'approved' | 'rejected' 
 export type AdminApprovalStatus = 'pending_approval' | 'approved' | 'rejected' | null;
 
 export interface CreateSessionResponse {
+	session_id: string;
 	verification_url: string;
 	session_token: string;
 }
@@ -170,13 +171,15 @@ class KycApi {
 		
 		console.log('[KYC API] Request:', url);
 		
-		const headers: HeadersInit = {
+		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
-			...options.headers,
+			// Bypass ngrok's browser-warning interstitial HTML page
+			'ngrok-skip-browser-warning': '1',
+			...(options.headers as Record<string, string> | undefined),
 		};
 
 		if (this.authToken) {
-			(headers as Record<string, string>)['Authorization'] = `Bearer ${this.authToken}`;
+			headers['Authorization'] = `Bearer ${this.authToken}`;
 		}
 
 		try {
@@ -185,7 +188,20 @@ class KycApi {
 				headers,
 			});
 
-			const data = await response.json();
+			// Read as text first so a non-JSON response (e.g. ngrok HTML) gives a
+			// useful error instead of a cryptic "Unexpected character" parse error.
+			const rawText = await response.text();
+			let data: ApiResponse<T>;
+			try {
+				data = JSON.parse(rawText) as ApiResponse<T>;
+			} catch {
+				console.error('[KYC API] Non-JSON response from', url, '—', rawText.slice(0, 200));
+				return {
+					success: false,
+					error: `Server returned an invalid response (HTTP ${response.status}). ` +
+						'If using ngrok, make sure the tunnel is still active.',
+				};
+			}
 			console.log('[KYC API] Response:', data);
 			return data;
 		} catch (error) {
@@ -231,6 +247,15 @@ class KycApi {
 	 */
 	async refreshSessionStatus(sessionId: string): Promise<ApiResponse<KycStatusResponse>> {
 		return this.getSessionStatus(sessionId);
+	}
+
+	/**
+	 * Proactively sync a session's status by pulling the latest decision from Didit.
+	 * Call this when the user returns from the Didit WebView — it ensures the DB is
+	 * up-to-date even if the Didit webhook hasn't arrived yet.
+	 */
+	async syncSession(sessionId: string): Promise<ApiResponse<{ synced: boolean; status: string; adminApprovalStatus: string | null }>> {
+		return this.request(`/kyc/session/${sessionId}/sync`, { method: 'POST' });
 	}
 }
 

@@ -8,14 +8,32 @@ import { router, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/hooks';
 import { Button } from '@/components/Button';
-import { useUser, useClerk } from '@clerk/clerk-expo';
-import { useMemo } from 'react';
+import { useUser, useClerk, useAuth } from '@clerk/clerk-expo';
+import { useEffect, useMemo, useState } from 'react';
+import { kycApi, type UserKycSummary } from '@/lib/kyc-api';
 
 export default function ProfileScreen() {
   const theme = useTheme();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { getToken, isSignedIn } = useAuth();
   const navigation = useRouter();
+
+  // Fetch KYC summary so we can route the KYC menu item correctly
+  const [kycSummary, setKycSummary] = useState<UserKycSummary | null>(null);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const load = async () => {
+      try {
+        const token = await getToken();
+        if (token) kycApi.setAuthToken(token);
+        const res = await kycApi.getUserKycStatus();
+        if (res.success && res.data) setKycSummary(res.data);
+      } catch { /* silent */ }
+    };
+    void load();
+  }, [isSignedIn, getToken]);
 
   const displayName = useMemo(() => {
     if (!user) {
@@ -53,14 +71,39 @@ export default function ProfileScreen() {
     }
   };
 
+  // Route to KYC status if user has already started, otherwise to start
+  const handleKycPress = () => {
+    const hasSession = kycSummary && kycSummary.kycStatus !== 'not_started';
+    if (hasSession) {
+      router.push('/kyc/status' as any);
+    } else {
+      router.push('/kyc/start' as any);
+    }
+  };
+
   const menuItems = [
-    { id: '1', title: 'Account Settings', icon: 'person-outline', iconSet: 'Ionicons', screen: '/settings/account' },
-    { id: '2', title: 'Wallet & Payments', icon: 'wallet-outline', iconSet: 'Ionicons', screen: '/wallets/balances' },
-    { id: '3', title: 'KYC Verification', icon: 'shield-checkmark-outline', iconSet: 'Ionicons', screen: '/kyc/start' },
-    { id: '4', title: 'Security', icon: 'lock-closed-outline', iconSet: 'Ionicons', screen: '/settings/security' },
-    { id: '5', title: 'Help & Support', icon: 'help-circle-outline', iconSet: 'Ionicons', screen: '/settings/support' },
-    { id: '6', title: 'Invite Friends', icon: 'gift-outline', iconSet: 'Ionicons', screen: '/settings/invite' },
+    { id: '1', title: 'Account Settings', icon: 'person-outline', iconSet: 'Ionicons', screen: '/settings/account', onPress: null },
+    { id: '2', title: 'Wallet & Payments', icon: 'wallet-outline', iconSet: 'Ionicons', screen: '/wallets/balances', onPress: null },
+    { id: '3', title: 'KYC Verification', icon: 'shield-checkmark-outline', iconSet: 'Ionicons', screen: null, onPress: handleKycPress },
+    { id: '4', title: 'Security', icon: 'lock-closed-outline', iconSet: 'Ionicons', screen: '/settings/security', onPress: null },
+    { id: '5', title: 'Help & Support', icon: 'help-circle-outline', iconSet: 'Ionicons', screen: '/settings/support', onPress: null },
+    { id: '6', title: 'Invite Friends', icon: 'gift-outline', iconSet: 'Ionicons', screen: '/settings/invite', onPress: null },
   ] as const;
+
+  // KYC badge label for the menu item subtitle
+  const kycBadge = useMemo(() => {
+    if (!kycSummary) return null;
+    switch (kycSummary.kycStatus) {
+      case 'not_started': return null;
+      case 'pending':
+        return kycSummary.adminApprovalStatus === 'pending_approval'
+          ? 'Pending admin approval'
+          : 'In progress';
+      case 'approved': return 'Approved';
+      case 'rejected': return 'Rejected — retry';
+      default: return null;
+    }
+  }, [kycSummary]);
 
   return (
     <LinearGradient
@@ -96,7 +139,7 @@ export default function ProfileScreen() {
         {menuItems.map((item) => (
           <TouchableOpacity 
             key={item.id} 
-            onPress={() => router.push(item.screen as any)}
+            onPress={item.onPress ?? (() => router.push(item.screen as any))}
             activeOpacity={0.7}
           >
             <View style={{ marginBottom: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}>
@@ -105,7 +148,12 @@ export default function ProfileScreen() {
                   <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: `${theme.colors.accent.primary}20`, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                     <Ionicons name={item.icon as any} size={22} color={theme.colors.accent.primary} />
                   </View>
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>{item.title}</Text>
+                  <View>
+                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>{item.title}</Text>
+                    {item.id === '3' && kycBadge ? (
+                      <Text style={{ color: theme.colors.text.tertiary, fontSize: 12, marginTop: 2 }}>{kycBadge}</Text>
+                    ) : null}
+                  </View>
                 </View>
                 <Ionicons name="chevron-forward" size={22} color="#9CA3AF" />
               </View>

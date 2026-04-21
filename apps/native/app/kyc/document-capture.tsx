@@ -26,6 +26,7 @@ export default function DocumentCaptureScreen() {
   const theme = useTheme();
   const params = useLocalSearchParams<{
     sessionUrl: string;
+    sessionId?: string;
   }>();
   
   const webViewRef = useRef<WebView>(null);
@@ -134,10 +135,13 @@ export default function DocumentCaptureScreen() {
     // Give a moment for any final processing
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Navigate to status screen - it will poll for webhook updates
+    // Navigate to status screen — pass sessionId so it can sync immediately
     router.replace({
       pathname: '/kyc/status' as any,
-      params: { fromWebView: 'true' },
+      params: {
+        fromWebView: 'true',
+        ...(params.sessionId ? { sessionId: params.sessionId } : {}),
+      },
     });
   };
 

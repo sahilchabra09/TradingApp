@@ -72,11 +72,12 @@ export default function KYCStartScreen() {
       const response = await kycApi.createSession();
       
       if (response.success && response.data) {
-        // Navigate to WebView with verification URL
+        // Navigate to WebView with verification URL and session ID
         router.push({
           pathname: '/kyc/document-capture' as any,
           params: {
             sessionUrl: response.data.verification_url,
+            sessionId:  response.data.session_id,
           },
         });
       } else {

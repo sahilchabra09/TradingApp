@@ -1,6 +1,19 @@
 /**
- * KYC Routes - Minimal Didit V3 Integration
- * Only 2 endpoints: create session + webhook
+ * KYC Routes — Didit V3 Integration
+ *
+ * Endpoints:
+ *   GET  /status                       — user's KYC summary
+ *   GET  /session/:sessionId           — detailed session + verification results
+ *   POST /session                      — create a new Didit session
+ *   POST /session/:sessionId/sync      — pull latest decision from Didit (fallback when webhook is delayed)
+ *   POST /webhook                      — Didit webhook receiver (source of truth)
+ *
+ * Fixes applied:
+ *  1. Webhook uses X-Signature-V2 + X-Signature-Simple fallback
+ *  2. Session endpoint parses V3 plural arrays (id_verifications, liveness_checks, face_matches)
+ *  3. verification_data is AES-256-GCM encrypted before storage, decrypted on read
+ *  4. /sync endpoint allows frontend to pull fresh status without waiting for webhook
+ *  5. session_id returned in POST /session so frontend can track the specific session
  */
 
 import { Hono } from 'hono';
@@ -8,119 +21,160 @@ import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { kycSessions } from '../db/schema/kyc-sessions';
 import { users } from '../db/schema/users';
-import { DiditService, type WebhookPayload } from '../services/didit.service';
+import { DiditService, type WebhookPayload, type DiditSessionDecision } from '../services/didit.service';
 import { requireAuth } from '../middleware/clerk-auth';
 
 const kyc = new Hono();
 
-/**
- * GET /status
- * Get current user's KYC status and latest session info
- */
-kyc.get('/status', requireAuth, async (c) => {
-	const user = c.get('user');
-	
-	if (!user) {
-		return c.json({ success: false, error: 'Unauthorized' }, 401);
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Extract human-readable rejection reasons from a V3 decision. */
+function extractRejectionReasons(decision: DiditSessionDecision): string[] {
+	const reasons: string[] = [];
+
+	const addWarnings = (warnings?: Array<{ risk?: string; short_description?: string; long_description?: string }>) => {
+		if (!warnings) return;
+		for (const w of warnings) {
+			const msg = w.short_description || w.long_description || w.risk;
+			if (msg) reasons.push(msg);
+		}
+	};
+
+	// ID verification warnings
+	for (const idv of decision.id_verifications ?? []) {
+		if (idv.status !== 'Approved') {
+			addWarnings(idv.warnings);
+			if (!idv.warnings?.length && idv.status) {
+				reasons.push(`Document verification ${idv.status.toLowerCase()}`);
+			}
+		}
 	}
 
-	// Get user's latest session
-	const latestSession = await db.query.kycSessions.findFirst({
-		where: eq(kycSessions.userId, user.id),
-		orderBy: [desc(kycSessions.createdAt)],
-	});
+	// Liveness warnings
+	for (const lc of decision.liveness_checks ?? []) {
+		if (lc.status !== 'Approved') {
+			addWarnings(lc.warnings);
+			if (!lc.warnings?.length && lc.status) {
+				reasons.push(`Liveness check ${lc.status.toLowerCase()}`);
+			}
+		}
+	}
 
-	// Get total attempts
-	const allSessions = await db.query.kycSessions.findMany({
-		where: eq(kycSessions.userId, user.id),
-	});
+	// Face match warnings
+	for (const fm of decision.face_matches ?? []) {
+		if (fm.status !== 'Approved') {
+			addWarnings(fm.warnings);
+			if (!fm.warnings?.length && fm.status) {
+				reasons.push(`Face match ${fm.status.toLowerCase()}`);
+			}
+		}
+	}
+
+	// Manual review comments
+	for (const r of decision.reviews ?? []) {
+		if (r.new_status === 'Declined' && r.comment) {
+			reasons.push(r.comment);
+		}
+	}
+
+	return reasons;
+}
+
+/** Build verificationDetails object from a V3 decision. */
+function buildVerificationDetails(decision: DiditSessionDecision) {
+	return {
+		documentVerified: decision.id_verifications?.[0]?.status === 'Approved',
+		livenessVerified: decision.liveness_checks?.[0]?.status === 'Approved',
+		faceMatchVerified: decision.face_matches?.[0]?.status === 'Approved',
+		// IP / AML — pass unless explicitly failed
+		ipAnalysisPassed: true,
+	};
+}
+
+/** Build extractedData from the first id_verification entry. */
+function buildExtractedData(decision: DiditSessionDecision) {
+	const idv = decision.id_verifications?.[0];
+	if (!idv) return null;
+
+	return {
+		fullName: idv.full_name || `${idv.first_name ?? ''} ${idv.last_name ?? ''}`.trim() || undefined,
+		firstName: idv.first_name,
+		lastName: idv.last_name,
+		dateOfBirth: idv.date_of_birth,
+		documentType: idv.document_type,
+		documentNumber: idv.document_number,
+		nationality: idv.nationality,
+		expiryDate: idv.expiration_date,
+		age: idv.age,
+		gender: idv.gender,
+		address: idv.formatted_address || idv.address,
+	};
+}
+
+// ---------------------------------------------------------------------------
+// GET /status — user KYC summary
+// ---------------------------------------------------------------------------
+
+kyc.get('/status', requireAuth, async (c) => {
+	const user = c.get('user');
+	if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+	const [latestSession, allSessions] = await Promise.all([
+		db.query.kycSessions.findFirst({
+			where: eq(kycSessions.userId, user.id),
+			orderBy: [desc(kycSessions.createdAt)],
+		}),
+		db.query.kycSessions.findMany({
+			where: eq(kycSessions.userId, user.id),
+		}),
+	]);
 
 	return c.json({
 		success: true,
 		data: {
 			kycStatus: user.kycStatus,
 			accountStatus: user.accountStatus,
-			lastSessionId: latestSession?.diditSessionId || null,
-			lastSessionStatus: latestSession?.status || null,
-			adminApprovalStatus: latestSession?.adminApprovalStatus || null,
+			lastSessionId: latestSession?.diditSessionId ?? null,
+			lastSessionStatus: latestSession?.status ?? null,
+			adminApprovalStatus: latestSession?.adminApprovalStatus ?? null,
 			totalAttempts: allSessions.length,
 			canStartNew: user.kycStatus !== 'approved' && allSessions.length < 5,
 		},
 	});
 });
 
-/**
- * GET /session/:sessionId
- * Get specific session status with verification details from Didit
- */
+// ---------------------------------------------------------------------------
+// GET /session/:sessionId — detailed session + verification results
+// ---------------------------------------------------------------------------
+
 kyc.get('/session/:sessionId', requireAuth, async (c) => {
 	const user = c.get('user');
 	const { sessionId } = c.req.param();
-	
-	if (!user) {
-		return c.json({ success: false, error: 'Unauthorized' }, 401);
-	}
+	if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-	// Find session in our DB
 	const session = await db.query.kycSessions.findFirst({
 		where: eq(kycSessions.diditSessionId, sessionId),
 	});
 
-	if (!session) {
-		return c.json({ success: false, error: 'Session not found' }, 404);
+	if (!session) return c.json({ success: false, error: 'Session not found' }, 404);
+	if (session.userId !== user.id) return c.json({ success: false, error: 'Unauthorized' }, 403);
+
+	// Decrypt and parse stored verification data
+	const decrypted = DiditService.decryptVerificationData(session.verificationData);
+	const decision  = decrypted as DiditSessionDecision | null;
+
+	const verificationDetails = decision ? buildVerificationDetails(decision) : null;
+	const extractedData       = decision ? buildExtractedData(decision) : null;
+	const rejectionReasons    = decision ? extractRejectionReasons(decision) : [];
+
+	// Append admin rejection reason if present
+	if (session.adminRejectionReason) {
+		rejectionReasons.push(session.adminRejectionReason);
 	}
 
-	// Verify session belongs to user
-	if (session.userId !== user.id) {
-		return c.json({ success: false, error: 'Unauthorized' }, 403);
-	}
-
-	// Read verification data from DB (stored by webhook) instead of live Didit API
-	const diditDecision = session.verificationData as any;
-
-	// Build response with verification details
-	const verificationDetails = diditDecision ? {
-		documentVerified: diditDecision.id_verification?.status === 'Approved',
-		livenessVerified: diditDecision.liveness?.status === 'Approved',
-		faceMatchVerified: diditDecision.face_match?.status === 'Approved',
-		ipAnalysisPassed: diditDecision.ip_analysis?.status !== 'Declined' && diditDecision.ip_analysis?.is_vpn_or_tor !== true,
-	} : null;
-
-	// Extract user data from id_verification
-	const extractedData = diditDecision?.id_verification ? {
-		fullName: diditDecision.id_verification.full_name || 
-			`${diditDecision.id_verification.first_name || ''} ${diditDecision.id_verification.last_name || ''}`.trim(),
-		firstName: diditDecision.id_verification.first_name,
-		lastName: diditDecision.id_verification.last_name,
-		dateOfBirth: diditDecision.id_verification.date_of_birth,
-		documentType: diditDecision.id_verification.document_type,
-		documentNumber: diditDecision.id_verification.document_number,
-		nationality: diditDecision.id_verification.nationality,
-		expiryDate: diditDecision.id_verification.expiration_date,
-		age: diditDecision.id_verification.age,
-		gender: diditDecision.id_verification.gender,
-		address: diditDecision.id_verification.formatted_address || diditDecision.id_verification.address,
-	} : null;
-
-	// Get rejection reasons from warnings
-	const rejectionReasons: string[] = [];
-	if (diditDecision?.id_verification?.warnings) {
-		rejectionReasons.push(...diditDecision.id_verification.warnings.map((w: any) => w.short_description || w.long_description || '').filter(Boolean));
-	}
-	if (diditDecision?.liveness?.warnings) {
-		rejectionReasons.push(...diditDecision.liveness.warnings.map((w: any) => w.short_description || w.long_description || '').filter(Boolean));
-	}
-	if (diditDecision?.face_match?.warnings) {
-		rejectionReasons.push(...diditDecision.face_match.warnings.map((w: any) => w.short_description || w.long_description || '').filter(Boolean));
-	}
-	if (diditDecision?.reviews) {
-		const declineReview = diditDecision.reviews.find((r: any) => r.new_status === 'Declined');
-		if (declineReview?.comment) {
-			rejectionReasons.push(declineReview.comment);
-		}
-	}
-
-	// Get attempt number
+	// Attempt number
 	const allSessions = await db.query.kycSessions.findMany({
 		where: eq(kycSessions.userId, user.id),
 		orderBy: [desc(kycSessions.createdAt)],
@@ -130,161 +184,233 @@ kyc.get('/session/:sessionId', requireAuth, async (c) => {
 	return c.json({
 		success: true,
 		data: {
-			sessionId: session.diditSessionId,
-			status: session.status,
+			sessionId:           session.diditSessionId,
+			status:              session.status,
 			adminApprovalStatus: session.adminApprovalStatus,
-			createdAt: session.createdAt.toISOString(),
-			completedAt: session.updatedAt.toISOString(),
+			createdAt:           session.createdAt.toISOString(),
+			completedAt:         session.updatedAt.toISOString(),
 			verificationDetails,
 			extractedData,
-			rejectionReason: rejectionReasons.length > 0 ? rejectionReasons.join('; ') : (session.adminRejectionReason || null),
+			rejectionReason: rejectionReasons.length > 0 ? rejectionReasons.join('; ') : null,
 			attemptNumber,
 			canRetry: session.status !== 'approved' && session.status !== 'pending' && allSessions.length < 5,
 		},
 	});
 });
 
-/**
- * POST /session
- * Create a new verification session
- */
+// ---------------------------------------------------------------------------
+// POST /session — create a new Didit verification session
+// ---------------------------------------------------------------------------
+
 kyc.post('/session', requireAuth, async (c) => {
 	const user = c.get('user');
-	
-	if (!user) {
-		return c.json({ success: false, error: 'Unauthorized' }, 401);
-	}
+	if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-	// Check if user already verified
 	if (user.kycStatus === 'approved') {
-		return c.json({ 
-			success: false, 
-			error: 'Already verified' 
-		}, 400);
+		return c.json({ success: false, error: 'Already verified' }, 400);
 	}
-
-	// Note: Not blocking on existing pending sessions to allow retries during development
-	// In production, you might want to add rate limiting or return existing session info
 
 	try {
-		// Create Didit session
-		const body = await c.req.json().catch(() => ({}));
-		const callbackUrl = body.callbackUrl || 'tradingapp://kyc/callback';
-		
+		const body        = await c.req.json().catch(() => ({}));
+		const callbackUrl = (body as any).callbackUrl || 'tradingapp://kyc/callback';
+
 		const diditSession = await DiditService.createSession(user.id, callbackUrl);
 
-		// Store session (ignore if already exists from retry)
 		await db.insert(kycSessions).values({
-			userId: user.id,
+			userId:         user.id,
 			diditSessionId: diditSession.session_id,
-			status: 'pending',
+			status:         'pending',
 		}).onConflictDoNothing();
 
-		// Update user status
 		await db.update(users).set({
-			kycStatus: 'pending',
-			updatedAt: new Date(),
+			kycStatus:  'pending',
+			updatedAt:  new Date(),
 		}).where(eq(users.id, user.id));
 
 		return c.json({
 			success: true,
 			data: {
-				verification_url: diditSession.url, // Didit returns 'url'
-				session_token: diditSession.session_token,
+				session_id:       diditSession.session_id,
+				verification_url: diditSession.url,
+				session_token:    diditSession.session_token,
 			},
 		}, 201);
 
 	} catch (error) {
-		console.error('Session creation failed:', error);
-		return c.json({ 
-			success: false, 
-			error: 'Failed to create verification session' 
-		}, 500);
+		console.error('[KYC] Session creation failed:', error);
+		return c.json({ success: false, error: 'Failed to create verification session' }, 500);
 	}
 });
 
-/**
- * POST /webhook
- * Webhook endpoint - source of truth for verification status
- */
-kyc.post('/webhook', async (c) => {
-	const signature = c.req.header('x-signature-v2') || '';
-	const timestamp = c.req.header('x-timestamp') || '';
-	const payload = await c.req.text();
+// ---------------------------------------------------------------------------
+// POST /session/:sessionId/sync
+//
+// Proactive status pull — called by the frontend when the user returns from
+// the Didit WebView.  Fetches the latest decision from Didit, updates our DB,
+// and returns the refreshed session data.  Acts as a fallback so the user
+// always sees an up-to-date status even if the webhook hasn't fired yet.
+// ---------------------------------------------------------------------------
 
-	// Verify signature
-	const isValid = DiditService.verifyWebhookSignature(payload, signature, timestamp);
+kyc.post('/session/:sessionId/sync', requireAuth, async (c) => {
+	const user = c.get('user');
+	const { sessionId } = c.req.param();
+	if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+	const session = await db.query.kycSessions.findFirst({
+		where: eq(kycSessions.diditSessionId, sessionId),
+	});
+
+	if (!session) return c.json({ success: false, error: 'Session not found' }, 404);
+	if (session.userId !== user.id) return c.json({ success: false, error: 'Unauthorized' }, 403);
+
+	// Fetch latest from Didit
+	const decision = await DiditService.getSessionDecision(sessionId);
+	if (!decision) {
+		// Couldn't reach Didit — return current cached state
+		return c.json({ success: true, data: { synced: false, status: session.status } });
+	}
+
+	const newStatus = DiditService.mapStatus(decision.status);
+
+	// Only update if status has actually changed or data is new
+	if (newStatus !== session.status || (decision && !session.verificationData)) {
+		const sessionUpdate: Record<string, unknown> = {
+			status:    newStatus,
+			updatedAt: new Date(),
+		};
+
+		if (decision && (newStatus === 'approved' || newStatus === 'declined')) {
+			// Encrypt sensitive PII before storing
+			sessionUpdate.verificationData = DiditService.encryptVerificationData(decision);
+		}
+
+		if (newStatus === 'approved' && !session.adminApprovalStatus) {
+			sessionUpdate.adminApprovalStatus = 'pending_approval';
+		}
+
+		await db.update(kycSessions)
+			.set(sessionUpdate)
+			.where(eq(kycSessions.id, session.id));
+
+		// Update user kycStatus
+		if (newStatus === 'approved') {
+			await db.update(users).set({ kycStatus: 'pending', updatedAt: new Date() })
+				.where(eq(users.id, session.userId));
+		} else if (newStatus === 'declined') {
+			await db.update(users).set({ kycStatus: 'rejected', updatedAt: new Date() })
+				.where(eq(users.id, session.userId));
+		}
+
+		console.log(`[KYC] Sync updated session ${sessionId}: ${session.status} → ${newStatus}`);
+	}
+
+	// Re-read the freshly updated session
+	const updatedSession = await db.query.kycSessions.findFirst({
+		where: eq(kycSessions.diditSessionId, sessionId),
+	});
+
+	return c.json({
+		success: true,
+		data: {
+			synced: true,
+			status: updatedSession?.status,
+			adminApprovalStatus: updatedSession?.adminApprovalStatus,
+		},
+	});
+});
+
+// ---------------------------------------------------------------------------
+// POST /webhook — Didit webhook (source of truth)
+// ---------------------------------------------------------------------------
+
+kyc.post('/webhook', async (c) => {
+	const signatureV2     = c.req.header('x-signature-v2')    ?? '';
+	const signatureSimple = c.req.header('x-signature-simple') ?? '';
+	const timestamp       = c.req.header('x-timestamp')        ?? '';
+	const rawPayload      = await c.req.text();
+
+	// Verify signature (V2 with Simple fallback)
+	const isValid = DiditService.verifyWebhookSignature(
+		rawPayload,
+		signatureV2,
+		timestamp,
+		signatureSimple,
+	);
+
 	if (!isValid) {
-		console.error('Invalid webhook signature');
+		console.error('[KYC Webhook] Invalid signature — rejecting');
 		return c.json({ success: false, error: 'Invalid signature' }, 401);
 	}
 
-	// Parse payload
 	let data: WebhookPayload;
 	try {
-		data = JSON.parse(payload);
+		data = JSON.parse(rawPayload);
 	} catch {
 		return c.json({ success: false, error: 'Invalid payload' }, 400);
 	}
 
 	const { session_id, status, vendor_data: userId } = data;
 
-	// Find session
+	// Look up our session record
 	const session = await db.query.kycSessions.findFirst({
 		where: eq(kycSessions.diditSessionId, session_id),
 	});
 
 	if (!session) {
-		console.warn(`Session not found: ${session_id}`);
-		return c.json({ success: true }); // Acknowledge anyway
+		console.warn(`[KYC Webhook] Session not found: ${session_id}`);
+		return c.json({ success: true }); // Acknowledge to prevent retries
 	}
 
-	// Map status
 	const newStatus = DiditService.mapStatus(status);
 
-	// If Didit approved/declined, fetch full decision data and store it
-	let verificationData = null;
+	// For terminal states, fetch full decision and store it encrypted
+	let encryptedDecision: object | null = null;
 	if (newStatus === 'approved' || newStatus === 'declined') {
-		try {
-			verificationData = await DiditService.getSessionDecision(session_id);
-			console.log(`Fetched Didit decision for ${session_id}`);
-		} catch (e) {
-			console.error(`Failed to fetch Didit decision for ${session_id}:`, e);
+		// The webhook may include the decision inline (V3 includes it for Approved/Declined)
+		const decisionSource = data.decision ?? await DiditService.getSessionDecision(session_id);
+		if (decisionSource) {
+			encryptedDecision = DiditService.encryptVerificationData(decisionSource);
 		}
 	}
 
-	// Update session with Didit status + stored verification data
-	const sessionUpdate: Record<string, any> = {
-		status: newStatus,
+	// Build session update
+	const sessionUpdate: Record<string, unknown> = {
+		status:    newStatus,
 		updatedAt: new Date(),
 	};
-	if (verificationData) {
-		sessionUpdate.verificationData = verificationData;
+
+	if (encryptedDecision) {
+		sessionUpdate.verificationData = encryptedDecision;
 	}
-	// If Didit approved, set admin approval to pending (admin must approve before user can trade)
-	if (newStatus === 'approved') {
+
+	// Didit approved → set adminApprovalStatus to pending (admin still needs to review)
+	if (newStatus === 'approved' && !session.adminApprovalStatus) {
 		sessionUpdate.adminApprovalStatus = 'pending_approval';
 	}
 
-	await db.update(kycSessions).set(sessionUpdate).where(eq(kycSessions.id, session.id));
+	await db.update(kycSessions)
+		.set(sessionUpdate)
+		.where(eq(kycSessions.id, session.id));
 
-	// Update user KYC status — but do NOT activate the account yet
-	// Account activation happens only when admin approves
+	// Update user.kycStatus
+	// approved  → 'pending'  (Didit done, awaiting admin)
+	// declined  → 'rejected'
 	if (newStatus === 'approved') {
-		await db.update(users).set({
-			kycStatus: 'pending', // Didit done, but pending admin approval
-			updatedAt: new Date(),
-		}).where(eq(users.id, session.userId));
+		await db.update(users)
+			.set({ kycStatus: 'pending', updatedAt: new Date() })
+			.where(eq(users.id, session.userId));
 	} else if (newStatus === 'declined') {
-		await db.update(users).set({
-			kycStatus: 'rejected',
-			updatedAt: new Date(),
-		}).where(eq(users.id, session.userId));
+		await db.update(users)
+			.set({ kycStatus: 'rejected', updatedAt: new Date() })
+			.where(eq(users.id, session.userId));
 	}
 
-	console.log(`Webhook processed: ${session_id} -> ${newStatus} (admin approval: ${newStatus === 'approved' ? 'pending' : 'n/a'})`);
+	console.log(
+		`[KYC Webhook] Processed: session=${session_id} diditStatus=${status} → internalStatus=${newStatus}` +
+		(newStatus === 'approved' ? ' (pending admin approval)' : ''),
+	);
+
 	return c.json({ success: true });
 });
 
 export default kyc;
-

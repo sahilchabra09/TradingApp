@@ -86,29 +86,54 @@ export default function KYCStatusScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, params.sessionId]);
 
-  // Initial fetch
+  // Initial fetch — when coming from WebView, first sync with Didit then fetch
   useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    const init = async () => {
+      if (params.fromWebView === 'true' && params.sessionId) {
+        // Proactively pull latest decision from Didit before rendering
+        try {
+          const token = await stableGetToken();
+          if (token) kycApi.setAuthToken(token);
+          await kycApi.syncSession(params.sessionId);
+        } catch {
+          // Best-effort — fetchStatus will still show cached DB state
+        }
+      }
+      await fetchStatus();
+    };
+    void init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Poll for updates if coming from WebView and status is pending
+  // Poll for updates if coming from WebView and status is still pending/in-review
   useEffect(() => {
-    if (params.fromWebView === 'true' && sessionStatus && isVerificationPending(sessionStatus.status)) {
-      const pollInterval = setInterval(() => {
-        fetchStatus(false);
+    // Keep polling only while the session hasn't reached a terminal state
+    const isTerminal = sessionStatus && 
+      (sessionStatus.status === 'approved' || 
+       sessionStatus.status === 'declined' || 
+       sessionStatus.status === 'expired');
+
+    if (params.fromWebView === 'true' && !isTerminal) {
+      const pollInterval = setInterval(async () => {
+        // Try sync first to pull fresh data from Didit
+        if (params.sessionId) {
+          try { await kycApi.syncSession(params.sessionId); } catch { /* ignore */ }
+        }
+        await fetchStatus(false);
       }, 5000); // Poll every 5 seconds
 
-      // Stop polling after 2 minutes
+      // Stop polling after 3 minutes
       const timeout = setTimeout(() => {
         clearInterval(pollInterval);
-      }, 120000);
+      }, 180000);
 
       return () => {
         clearInterval(pollInterval);
         clearTimeout(timeout);
       };
     }
-  }, [params.fromWebView, sessionStatus?.status, fetchStatus]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.fromWebView, sessionStatus?.status]);
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -207,9 +232,9 @@ export default function KYCStatusScreen() {
 
   // Get current status for display
   const currentStatus: KycSessionStatus = sessionStatus?.status || 
-    (userSummary?.kycStatus === 'approved' ? 'approved' : 
-     userSummary?.kycStatus === 'rejected' ? 'rejected' : 
-     userSummary?.kycStatus === 'pending' ? 'in_progress' : 'created');
+    (userSummary?.kycStatus === 'approved'  ? 'approved'    : 
+     userSummary?.kycStatus === 'rejected'  ? 'declined'    : 
+     userSummary?.kycStatus === 'pending'   ? 'in_progress' : 'created');
   
   const statusConfig = getStatusConfig(currentStatus);
 
@@ -525,8 +550,8 @@ export default function KYCStatusScreen() {
             </Card>
           )}
 
-          {/* Rejection Reason */}
-          {currentStatus === 'rejected' && sessionStatus?.rejectionReason && (
+          {/* Rejection Reason — shown for both 'declined' (Didit) and 'rejected' (user table) */}
+          {(currentStatus === 'declined' || currentStatus === 'rejected') && sessionStatus?.rejectionReason && (
             <Card style={{ marginBottom: 16, backgroundColor: theme.colors.error + '10' }}>
               <Text style={{ 
                 color: theme.colors.error, 

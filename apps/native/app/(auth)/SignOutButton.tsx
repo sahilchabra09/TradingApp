@@ -22,3 +22,5 @@ export const SignOutButton = () => {
     </TouchableOpacity>
   )
 }
+
+export default SignOutButton

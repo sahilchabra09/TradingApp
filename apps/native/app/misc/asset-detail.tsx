@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -70,6 +71,7 @@ export default function AssetDetailScreen() {
 	const [chartPeriod, setChartPeriod]   = useState<ChartPeriod>('1M');
 	const [chartBars, setChartBars]       = useState<HistoricalBar[]>([]);
 	const [chartLoading, setChartLoading] = useState(false);
+	const [chartWidth, setChartWidth]     = useState(0);
 
 	// ── Load quote + holdings ──────────────────────────────────────────────────
 	const loadDetails = useCallback(async () => {
@@ -188,12 +190,15 @@ export default function AssetDetailScreen() {
 
 					{/* ── Chart ────────────────────────────────────────────────── */}
 					<Card style={{ marginBottom: 20, paddingVertical: 16, paddingHorizontal: 10 }}>
-						<StockChart
-							bars={chartBars}
-							isLoading={chartLoading}
-							period={chartPeriod}
-							onPeriodChange={handlePeriodChange}
-						/>
+						<View onLayout={(e) => setChartWidth(e.nativeEvent.layout.width)}>
+							<StockChart
+								bars={chartBars}
+								isLoading={chartLoading}
+								period={chartPeriod}
+								onPeriodChange={handlePeriodChange}
+								width={chartWidth > 0 ? chartWidth : undefined}
+							/>
+						</View>
 					</Card>
 
 					{/* ── Buy / Sell buttons ───────────────────────────────────── */}
