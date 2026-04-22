@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { useTheme } from '@/lib/hooks';
 import { useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { Spinner } from '@/components/Spinner';
 import { getPaperMarketData, type PaperMarketData } from '@/lib/paper-api';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -83,7 +84,7 @@ export default function TradeScreen() {
 					<Card style={{ marginBottom: 16 }}>
 						{isLoading ? (
 							<View style={{ alignItems: 'center', paddingVertical: 8 }}>
-								<ActivityIndicator color={theme.colors.accent.primary} />
+								<Spinner color={theme.colors.accent.primary} />
 								<Text style={{ color: theme.colors.text.secondary, marginTop: 10 }}>Loading live quote...</Text>
 							</View>
 						) : error ? (

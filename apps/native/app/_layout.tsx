@@ -13,7 +13,8 @@ import "../global.css";
 import { NAV_THEME } from "@/lib/constants";
 import React, { useEffect, useRef } from "react";
 import { useColorScheme } from "@/lib/use-color-scheme";
-import { ActivityIndicator, Platform, Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
+import { Spinner } from "@/components/Spinner";
 import { setAndroidNavigationBar } from "@/lib/android-navigation-bar";
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import type { TokenCache } from "@clerk/clerk-expo";
@@ -103,7 +104,7 @@ const InitialLayout = () => {
 					backgroundColor: "#000000",
 				}}
 			>
-				<ActivityIndicator size="large" color="#10B981" />
+				<Spinner size="large" color="#10B981" />
 				<Text style={{ color: "#FFFFFF", marginTop: 12 }}>
 					Loading your session...
 				</Text>

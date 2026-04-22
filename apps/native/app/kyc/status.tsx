@@ -3,7 +3,7 @@
  * Displays verification status and results
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -11,6 +11,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { Spinner } from '@/components/Spinner';
 import { activatePaperAccount, getPaperStatus, type PaperStatus } from '@/lib/paper-api';
 import { 
   kycApi, 
@@ -286,7 +287,7 @@ export default function KYCStatusScreen() {
         style={{ flex: 1 }}
       >
         <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.accent.primary} />
+          <Spinner size="large" color={theme.colors.accent.primary} />
           <Text style={{ color: theme.colors.text.secondary, marginTop: 16 }}>
             Loading verification status...
           </Text>
@@ -366,7 +367,7 @@ export default function KYCStatusScreen() {
               alignItems: 'center', 
               marginBottom: 24 
             }}>
-              <ActivityIndicator size="small" color={theme.colors.accent.primary} />
+              <Spinner size="small" color={theme.colors.accent.primary} />
               <Text style={{ 
                 color: theme.colors.text.tertiary, 
                 fontSize: 12, 

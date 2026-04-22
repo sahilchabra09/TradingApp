@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
+import { Spinner } from '@/components/Spinner';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { getPaperAccount, getPaperTradeHistory, type PaperTradeHistoryItem } from '@/lib/paper-api';
 
@@ -104,7 +105,7 @@ export default function OrdersHistoryScreen() {
 
 				{isLoading ? (
 					<View style={{ paddingVertical: 48, alignItems: 'center' }}>
-						<ActivityIndicator color={theme.colors.accent.primary} />
+						<Spinner color={theme.colors.accent.primary} />
 						<Text style={{ color: theme.colors.text.secondary, marginTop: 12 }}>Loading order history...</Text>
 					</View>
 				) : filteredTrades.length === 0 ? (

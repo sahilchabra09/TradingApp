@@ -2,13 +2,13 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
-  ActivityIndicator,
   StyleSheet,
   ViewStyle,
   TextStyle,
 } from 'react-native';
 import { useTheme } from '@/lib/hooks';
 import { Shadows } from '@/lib/theme';
+import { Spinner } from '@/components/Spinner';
 
 export interface ButtonProps {
   onPress: () => void;
@@ -148,7 +148,7 @@ export const Button: React.FC<ButtonProps> = ({
       style={[getButtonStyle(), style]}
     >
       {loading ? (
-        <ActivityIndicator
+        <Spinner
           color={
             variant === 'primary' || variant === 'danger'
               ? theme.colors.text.inverse

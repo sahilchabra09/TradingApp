@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { router, usePathname } from 'expo-router';
 import { activatePaperAccount, getPaperStatus, type PaperStatus } from '@/lib/paper-api';
+import { Spinner } from '@/components/Spinner';
 import { useStableToken } from '@/lib/hooks';
 
 type Step = 'kyc_required' | 'unlock_demo' | null;
@@ -127,7 +128,7 @@ export function PaperAccountGateModal() {
 							disabled={isUnlocking || isLoading}
 						>
 							{isUnlocking || isLoading ? (
-								<ActivityIndicator color="#031108" />
+								<Spinner color="#031108" size="small" />
 							) : (
 								<Text className="text-sm font-semibold text-[#031108]">
 									{step === 'kyc_required' ? 'Go to KYC' : 'Unlock Paper Trading'}

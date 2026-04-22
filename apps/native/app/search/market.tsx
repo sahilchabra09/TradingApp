@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-	ActivityIndicator,
 	Pressable,
 	ScrollView,
 	Text,
@@ -13,6 +12,7 @@ import { router } from 'expo-router';
 import { getPaperMarketData, type PaperMarketData } from '@/lib/paper-api';
 import { formatCurrency, formatRelativeTime } from '@/lib/formatters';
 import { usePaperMarketStream, useStableToken } from '@/lib/hooks';
+import { Spinner } from '@/components/Spinner';
 
 const toNumber = (value: string | undefined) => Number(value || 0);
 
@@ -114,7 +114,7 @@ export default function MarketSearchScreen() {
 						<View className="flex-row items-center justify-between">
 							<Text className="text-sm font-semibold text-[#E6F8EA]">Live snapshot</Text>
 							{isLoading ? (
-								<ActivityIndicator color="#00D35A" />
+								<Spinner color="#00D35A" />
 							) : (
 								<Text className="text-xs text-[#6B9175]">
 									{lastMessageAt

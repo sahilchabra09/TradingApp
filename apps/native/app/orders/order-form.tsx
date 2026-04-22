@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-	ActivityIndicator,
 	Alert,
 	Pressable,
 	ScrollView,
@@ -11,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Spinner } from '@/components/Spinner';
 import {
 	activatePaperAccount,
 	getPaperAccount,
@@ -327,7 +327,7 @@ export default function OrderFormScreen() {
 										disabled={isActivatingDemo}
 									>
 										{isActivatingDemo ? (
-											<ActivityIndicator color="#031108" />
+											<Spinner color="#031108" size="small" />
 										) : (
 											<Text className="text-xs font-semibold text-[#031108]">
 												Activate Demo
@@ -402,7 +402,7 @@ export default function OrderFormScreen() {
 						<View className="flex-row items-center justify-between">
 							<Text className="text-sm font-semibold text-[#E6F8EA]">Quote & fill estimate</Text>
 							{isLoadingQuote || isLoadingContext ? (
-								<ActivityIndicator color="#00D35A" />
+								<Spinner color="#00D35A" />
 							) : (
 								<Text className="text-xs text-[#6B9175]">
 									{lastUpdatedAt
@@ -465,7 +465,7 @@ export default function OrderFormScreen() {
 						disabled={isSubmitting || !canTrade}
 					>
 						{isSubmitting ? (
-							<ActivityIndicator color={side === 'buy' ? '#031108' : '#FFFFFF'} />
+							<Spinner color={side === 'buy' ? '#031108' : '#FFFFFF'} size="small" />
 						) : (
 							<Text
 								className={

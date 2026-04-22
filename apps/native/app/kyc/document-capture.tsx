@@ -7,7 +7,6 @@ import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { 
   View, 
   Text, 
-  ActivityIndicator, 
   TouchableOpacity, 
   Alert,
   BackHandler,
@@ -17,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/lib/hooks';
+import { Spinner } from '@/components/Spinner';
 
 // Callback URL scheme for detecting completion
 const CALLBACK_SCHEME = 'tradingapp://';
@@ -308,7 +308,7 @@ export default function DocumentCaptureScreen() {
           alignItems: 'center',
           zIndex: 10,
         }}>
-          <ActivityIndicator size="large" color="#000000" />
+          <Spinner size="large" color="#FFFFFF" />
           <Text style={{ 
             color: '#333333', 
             marginTop: 16,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import {
 	type PaperStatus,
 } from '@/lib/paper-api';
 import { Button } from '@/components/Button';
+import { Spinner } from '@/components/Spinner';
 import { formatCurrency } from '@/lib/formatters';
 import { useTheme, useStableToken } from '@/lib/hooks';
 
@@ -99,7 +100,7 @@ export default function WalletBalancesScreen() {
 						Total Balance
 					</Text>
 					{isLoading ? (
-						<ActivityIndicator color={theme.colors.accent.primary} />
+						<Spinner color={theme.colors.accent.primary} />
 					) : (
 						<Text style={{ color: '#FFFFFF', fontSize: 42, fontWeight: 'bold', letterSpacing: -0.5, marginBottom: 8 }}>
 							{state.portfolio ? formatCurrency(totals.total) : '--'}

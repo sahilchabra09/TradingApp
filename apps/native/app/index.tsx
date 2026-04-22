@@ -1,9 +1,10 @@
-import { Text, ActivityIndicator } from 'react-native';
+import { Text } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { router } from 'expo-router';
 import { useTheme } from '@/lib/hooks';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
+import { Spinner } from '@/components/Spinner';
 
 export default function SplashScreen() {
   const theme = useTheme();
@@ -32,7 +33,7 @@ export default function SplashScreen() {
       <Text style={{ color: theme.colors.text.secondary, marginTop: 16, fontSize: 15 }}>
         Your Premium Trading Platform
       </Text>
-      <ActivityIndicator size="large" color={theme.colors.accent.primary} style={{ marginTop: 24 }} />
+      <Spinner size="large" color={theme.colors.accent.primary} style={{ marginTop: 24 }} />
     </SafeAreaView>
   );
 }

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import { useStableToken } from '@/lib/hooks';import { router } from 'expo-router';
+import { Spinner } from '@/components/Spinner';
 import {
 	activatePaperAccount,
 	getPaperAccount,
@@ -82,7 +83,7 @@ export default function DemoDashboardScreen() {
 		return (
 			<SafeAreaView className="flex-1 bg-[#050A05]">
 				<View className="flex-1 items-center justify-center">
-					<ActivityIndicator color="#00D35A" />
+					<Spinner color="#00D35A" />
 					<Text className="mt-3 text-sm text-[#A8D5B3]">Loading demo dashboard...</Text>
 				</View>
 			</SafeAreaView>

@@ -3,7 +3,7 @@
  * Creates session and opens WebView
  */
 import { useState } from 'react';
-import { View, Text, ScrollView, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -11,6 +11,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { Spinner } from '@/components/Spinner';
 import { kycApi } from '@/lib/kyc-api';
 
 export default function KYCStartScreen() {
@@ -238,7 +239,7 @@ export default function KYCStartScreen() {
 
           {creating && (
             <View style={{ alignItems: 'center', marginBottom: 16 }}>
-              <ActivityIndicator color={theme.colors.accent.primary} />
+              <Spinner color={theme.colors.accent.primary} />
             </View>
           )}
 

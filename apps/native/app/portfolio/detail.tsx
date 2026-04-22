@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-	ActivityIndicator,
 	FlatList,
 	Pressable,
 	RefreshControl,
@@ -30,6 +29,7 @@ import {
 } from '@/lib/paper-api';
 import { formatCurrency, formatPercentage, formatRelativeTime } from '@/lib/formatters';
 import { usePaperMarketStream, useStableToken } from '@/lib/hooks';
+import { Spinner } from '@/components/Spinner';
 
 const toNumber = (value: string) => Number(value || 0);
 const toDecimalString = (value: number) => (Number.isFinite(value) ? value.toFixed(8) : '0.00000000');
@@ -344,7 +344,7 @@ export default function PortfolioDetailScreen() {
 		return (
 			<SafeAreaView className="flex-1 bg-[#050A05]">
 				<View className="flex-1 items-center justify-center">
-					<ActivityIndicator color="#00D35A" />
+					<Spinner color="#00D35A" />
 					<Text className="mt-3 text-sm text-[#A8D5B3]">Loading demo portfolio...</Text>
 				</View>
 			</SafeAreaView>
@@ -382,7 +382,7 @@ export default function PortfolioDetailScreen() {
 									disabled={activating}
 								>
 									{activating ? (
-										<ActivityIndicator color="#031108" />
+										<Spinner color="#031108" size="small" />
 									) : (
 										<Text className="text-xs font-semibold text-[#031108]">Activate Demo</Text>
 									)}

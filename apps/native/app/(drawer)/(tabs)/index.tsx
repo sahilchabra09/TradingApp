@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Spinner } from '@/components/Spinner';
 import {
 	getPaperAccount,
 	getPaperHoldings,
@@ -131,7 +132,7 @@ export default function HomeScreen() {
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 				{isLoading ? (
 					<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-						<ActivityIndicator color="#10B981" />
+						<Spinner color="#10B981" />
 						<Text style={{ color: '#9CA3AF', marginTop: 12 }}>Loading live data...</Text>
 					</View>
 				) : (

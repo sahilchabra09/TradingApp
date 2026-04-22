@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
+import { Spinner } from '@/components/Spinner';
 import { getPaperMarketData, type PaperMarketData } from '@/lib/paper-api';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -69,7 +70,7 @@ export default function WatchlistScreen() {
 
 				{isLoading ? (
 					<View style={{ paddingVertical: 48, alignItems: 'center' }}>
-						<ActivityIndicator color={theme.colors.accent.primary} />
+						<Spinner color={theme.colors.accent.primary} />
 						<Text style={{ color: theme.colors.text.secondary, marginTop: 12 }}>
 							Loading live watchlist...
 						</Text>

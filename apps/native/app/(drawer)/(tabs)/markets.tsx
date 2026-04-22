@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-	ActivityIndicator,
 	FlatList,
 	Text,
 	TextInput,
@@ -12,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Spinner } from '@/components/Spinner';
 import {
 	getPaperBatchMarketData,
 	searchPaperAssets,
@@ -209,7 +209,7 @@ export default function MarketsScreen() {
 					/* ── Search results ──────────────────────────────────── */
 					isSearchLoading ? (
 						<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-							<ActivityIndicator color="#10B981" size="large" />
+							<Spinner color="#10B981" size="large" />
 							<Text style={{ color: '#6B7280', marginTop: 14, fontSize: 14 }}>
 								Searching stocks...
 							</Text>
@@ -245,7 +245,7 @@ export default function MarketsScreen() {
 					/* ── Popular watchlist ───────────────────────────────── */
 					isLoading ? (
 						<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-							<ActivityIndicator color="#10B981" size="large" />
+							<Spinner color="#10B981" size="large" />
 							<Text style={{ color: '#6B7280', marginTop: 14, fontSize: 14 }}>
 								Loading market data...
 							</Text>

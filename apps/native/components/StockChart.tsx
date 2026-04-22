@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-	ActivityIndicator,
 	Text,
 	TouchableOpacity,
 	useWindowDimensions,
@@ -16,6 +15,7 @@ import Svg, {
 } from 'react-native-svg';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Spinner } from '@/components/Spinner';
 import type { ChartPeriod, HistoricalBar } from '@/lib/paper-api';
 
 // ─── Re-export ────────────────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ export function StockChart({
 						borderRadius: 12,
 					}}
 				>
-					<ActivityIndicator color={COLOR_UP} size="small" />
+					<Spinner color={COLOR_UP} size="small" />
 					<Text style={{ color: '#4B5563', fontSize: 12, marginTop: 8 }}>
 						Loading chart data...
 					</Text>
