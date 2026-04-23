@@ -17,6 +17,7 @@
  */
 
 import { Hono } from 'hono';
+import { describeRoute } from 'hono-openapi';
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { kycSessions } from '../db/schema/kyc-sessions';
@@ -117,7 +118,20 @@ function buildExtractedData(decision: DiditSessionDecision) {
 // GET /status — user KYC summary
 // ---------------------------------------------------------------------------
 
-kyc.get('/status', requireAuth, async (c) => {
+kyc.get(
+	'/status',
+	describeRoute({
+		tags: ['KYC'],
+		summary: 'Get KYC status',
+		description: 'Returns the user\'s KYC status, latest session info, and whether a new session can be started.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'KYC status returned' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
@@ -149,7 +163,22 @@ kyc.get('/status', requireAuth, async (c) => {
 // GET /session/:sessionId — detailed session + verification results
 // ---------------------------------------------------------------------------
 
-kyc.get('/session/:sessionId', requireAuth, async (c) => {
+kyc.get(
+	'/session/:sessionId',
+	describeRoute({
+		tags: ['KYC'],
+		summary: 'Get KYC session details',
+		description: 'Returns detailed verification results for a specific Didit session including document, liveness, and face-match checks.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Session details returned' },
+			401: { description: 'Not authenticated' },
+			403: { description: 'Session belongs to another user' },
+			404: { description: 'Session not found' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	const { sessionId } = c.req.param();
 	if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -202,7 +231,22 @@ kyc.get('/session/:sessionId', requireAuth, async (c) => {
 // POST /session — create a new Didit verification session
 // ---------------------------------------------------------------------------
 
-kyc.post('/session', requireAuth, async (c) => {
+kyc.post(
+	'/session',
+	describeRoute({
+		tags: ['KYC'],
+		summary: 'Create KYC session',
+		description: 'Creates a new Didit identity verification session. Returns the session URL, ID, and token for the frontend WebView. Optional body: { callbackUrl: string }.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			201: { description: 'Session created' },
+			400: { description: 'Already verified' },
+			401: { description: 'Not authenticated' },
+			500: { description: 'Didit session creation failed' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
@@ -251,7 +295,22 @@ kyc.post('/session', requireAuth, async (c) => {
 // always sees an up-to-date status even if the webhook hasn't fired yet.
 // ---------------------------------------------------------------------------
 
-kyc.post('/session/:sessionId/sync', requireAuth, async (c) => {
+kyc.post(
+	'/session/:sessionId/sync',
+	describeRoute({
+		tags: ['KYC'],
+		summary: 'Sync KYC session status',
+		description: 'Proactively pulls the latest decision from Didit and updates the DB. Call this when the user returns from the Didit WebView as a fallback in case the webhook is delayed.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Sync complete' },
+			401: { description: 'Not authenticated' },
+			403: { description: 'Session belongs to another user' },
+			404: { description: 'Session not found' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	const { sessionId } = c.req.param();
 	if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -323,7 +382,20 @@ kyc.post('/session/:sessionId/sync', requireAuth, async (c) => {
 // POST /webhook — Didit webhook (source of truth)
 // ---------------------------------------------------------------------------
 
-kyc.post('/webhook', async (c) => {
+kyc.post(
+	'/webhook',
+	describeRoute({
+		tags: ['KYC'],
+		summary: 'Didit webhook receiver',
+		description: 'Receives Didit identity verification decision events. Verified via X-Signature-V2 (with X-Signature-Simple fallback). This is the source of truth for KYC status updates.',
+		security: [],
+		responses: {
+			200: { description: 'Event acknowledged' },
+			400: { description: 'Invalid payload' },
+			401: { description: 'Invalid signature' },
+		},
+	}),
+	async (c) => {
 	const signatureV2     = c.req.header('x-signature-v2')    ?? '';
 	const signatureSimple = c.req.header('x-signature-simple') ?? '';
 	const timestamp       = c.req.header('x-timestamp')        ?? '';

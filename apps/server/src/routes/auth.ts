@@ -5,6 +5,7 @@
  */
 
 import { Hono } from 'hono';
+import { describeRoute } from 'hono-openapi';
 import { Webhook } from 'svix';
 import { db } from '../db';
 import { users, sessionHistory, auditLogs } from '../db/schema';
@@ -26,7 +27,20 @@ const auth = new Hono();
  * - session.created: Logs session creation
  * - session.ended: Marks session as inactive
  */
-auth.post('/webhooks/clerk', async (c) => {
+auth.post(
+	'/webhooks/clerk',
+	describeRoute({
+		tags: ['Auth'],
+		summary: 'Clerk webhook receiver',
+		description: 'Receives and processes Clerk user/session lifecycle events (user.created, user.updated, user.deleted, session.created, session.ended). Verified via Svix signature.',
+		security: [],
+		responses: {
+			200: { description: 'Event acknowledged' },
+			400: { description: 'Missing headers or invalid signature' },
+			500: { description: 'Webhook processing error' },
+		},
+	}),
+	async (c) => {
 	const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
 	if (!WEBHOOK_SECRET) {
@@ -217,7 +231,20 @@ async function handleSessionEnded(data: any) {
  * Get current session info
  * Protected endpoint
  */
-auth.get('/session', requireAuth, async (c) => {
+auth.get(
+	'/session',
+	describeRoute({
+		tags: ['Auth'],
+		summary: 'Get current session',
+		description: 'Returns the authenticated user profile and Clerk session metadata.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Session info returned' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	const clerkAuth = c.get('clerkAuth');
 
@@ -248,7 +275,20 @@ auth.get('/session', requireAuth, async (c) => {
  * Marks all active sessions as inactive in your DB
  * (Frontend should call Clerk's signOut() as well)
  */
-auth.post('/logout', requireAuth, async (c) => {
+auth.post(
+	'/logout',
+	describeRoute({
+		tags: ['Auth'],
+		summary: 'Logout',
+		description: 'Marks all active DB sessions as inactive. Call Clerk signOut() on the frontend as well.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Logged out successfully' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	const clerkAuth = c.get('clerkAuth');
 
@@ -276,7 +316,20 @@ auth.post('/logout', requireAuth, async (c) => {
 /**
  * Get user's active sessions
  */
-auth.get('/sessions', requireAuth, async (c) => {
+auth.get(
+	'/sessions',
+	describeRoute({
+		tags: ['Auth'],
+		summary: 'List active sessions',
+		description: 'Returns the last 10 sessions for the authenticated user.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Session list returned' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 
 	const sessions = await db.query.sessionHistory.findMany({

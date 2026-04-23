@@ -5,7 +5,7 @@
  */
 
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { db } from '../db';
 import { users, kycSessions, auditLogs } from '../db/schema';
@@ -23,7 +23,18 @@ const admin = new Hono();
 // Dashboard Stats
 // ============================================================================
 
-admin.get('/stats', async (c) => {
+admin.get(
+	'/stats',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'Dashboard statistics',
+		description: 'Returns aggregate counts: total users, verified users, users pending KYC, and active users.',
+		security: [],
+		responses: {
+			200: { description: 'Stats returned' },
+		},
+	}),
+	async (c) => {
 	const [totalUsersResult] = await db.select({ count: count() }).from(users).where(isNull(users.deletedAt));
 	const [verifiedResult] = await db.select({ count: count() }).from(users).where(and(eq(users.kycStatus, 'approved'), isNull(users.deletedAt)));
 	const [pendingKycResult] = await db.select({ count: count() }).from(users).where(and(eq(users.kycStatus, 'pending'), isNull(users.deletedAt)));
@@ -52,7 +63,20 @@ const listUsersSchema = z.object({
 	accountStatus: z.string().optional(),
 });
 
-admin.get('/users', zValidator('query', listUsersSchema), async (c) => {
+admin.get(
+	'/users',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'List users',
+		description: 'Returns a paginated list of users. Supports filtering by kycStatus, accountStatus, and full-text search across email and name.',
+		security: [],
+		responses: {
+			200: { description: 'User list returned' },
+			400: { description: 'Invalid query params' },
+		},
+	}),
+	zValidator('query', listUsersSchema),
+	async (c) => {
 	const { page, pageSize, search, kycStatus, accountStatus } = c.req.valid('query');
 	const offset = (page - 1) * pageSize;
 
@@ -126,7 +150,19 @@ admin.get('/users', zValidator('query', listUsersSchema), async (c) => {
 	});
 });
 
-admin.get('/users/:id', async (c) => {
+admin.get(
+	'/users/:id',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'Get user by ID',
+		description: 'Returns full admin view of a user including wallets and holdings.',
+		security: [],
+		responses: {
+			200: { description: 'User returned' },
+			404: { description: 'User not found' },
+		},
+	}),
+	async (c) => {
 	const { id } = c.req.param();
 
 	const user = await db.query.users.findFirst({
@@ -169,7 +205,19 @@ admin.get('/users/:id', async (c) => {
 	});
 });
 
-admin.post('/users/:id/suspend', async (c) => {
+admin.post(
+	'/users/:id/suspend',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'Suspend user',
+		description: 'Sets the user\'s accountStatus to "suspended" and logs an audit event.',
+		security: [],
+		responses: {
+			200: { description: 'User suspended' },
+			404: { description: 'User not found' },
+		},
+	}),
+	async (c) => {
 	const { id } = c.req.param();
 	const adminUser = { id: 'poc-admin' }; // POC: no auth
 
@@ -195,7 +243,19 @@ admin.post('/users/:id/suspend', async (c) => {
 	return c.json({ success: true, message: 'User suspended' });
 });
 
-admin.post('/users/:id/ban', async (c) => {
+admin.post(
+	'/users/:id/ban',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'Ban user',
+		description: 'Sets the user\'s accountStatus to "closed" (banned) and logs an audit event.',
+		security: [],
+		responses: {
+			200: { description: 'User banned' },
+			404: { description: 'User not found' },
+		},
+	}),
+	async (c) => {
 	const { id } = c.req.param();
 	const adminUser = { id: 'poc-admin' }; // POC: no auth
 
@@ -221,7 +281,19 @@ admin.post('/users/:id/ban', async (c) => {
 	return c.json({ success: true, message: 'User banned' });
 });
 
-admin.post('/users/:id/activate', async (c) => {
+admin.post(
+	'/users/:id/activate',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'Activate user',
+		description: 'Sets the user\'s accountStatus to "active" and logs an audit event.',
+		security: [],
+		responses: {
+			200: { description: 'User activated' },
+			404: { description: 'User not found' },
+		},
+	}),
+	async (c) => {
 	const { id } = c.req.param();
 	const adminUser = { id: 'poc-admin' }; // POC: no auth
 
@@ -257,7 +329,20 @@ const listKycSchema = z.object({
 	status: z.string().optional(),
 });
 
-admin.get('/kyc', zValidator('query', listKycSchema), async (c) => {
+admin.get(
+	'/kyc',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'List KYC sessions',
+		description: 'Returns a paginated list of KYC sessions, optionally filtered by status.',
+		security: [],
+		responses: {
+			200: { description: 'KYC session list returned' },
+			400: { description: 'Invalid query params' },
+		},
+	}),
+	zValidator('query', listKycSchema),
+	async (c) => {
 	const { page, pageSize, status } = c.req.valid('query');
 	const offset = (page - 1) * pageSize;
 
@@ -307,7 +392,19 @@ admin.get('/kyc', zValidator('query', listKycSchema), async (c) => {
 	});
 });
 
-admin.get('/kyc/:sessionId', async (c) => {
+admin.get(
+	'/kyc/:sessionId',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'Get KYC session details',
+		description: 'Returns full KYC session detail including decrypted verification data, document images, liveness/face-match scores, and AML results.',
+		security: [],
+		responses: {
+			200: { description: 'KYC session detail returned' },
+			404: { description: 'KYC session not found' },
+		},
+	}),
+	async (c) => {
 	const { sessionId } = c.req.param();
 
 	const session = await db.query.kycSessions.findFirst({
@@ -380,7 +477,19 @@ admin.get('/kyc/:sessionId', async (c) => {
 	});
 });
 
-admin.post('/kyc/:sessionId/approve', async (c) => {
+admin.post(
+	'/kyc/:sessionId/approve',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'Approve KYC session',
+		description: 'Sets adminApprovalStatus to "approved" and activates the user account, granting full trading access.',
+		security: [],
+		responses: {
+			200: { description: 'KYC approved' },
+			404: { description: 'KYC session not found' },
+		},
+	}),
+	async (c) => {
 	const { sessionId } = c.req.param();
 	const adminUser = { id: 'poc-admin' }; // POC: no auth
 
@@ -425,7 +534,21 @@ const rejectKycSchema = z.object({
 	reason: z.string().min(1, 'Rejection reason is required'),
 });
 
-admin.post('/kyc/:sessionId/reject', zValidator('json', rejectKycSchema), async (c) => {
+admin.post(
+	'/kyc/:sessionId/reject',
+	describeRoute({
+		tags: ['Admin'],
+		summary: 'Reject KYC session',
+		description: 'Sets adminApprovalStatus to "rejected", records the rejection reason, and sets the user\'s kycStatus to "rejected".',
+		security: [],
+		responses: {
+			200: { description: 'KYC rejected' },
+			400: { description: 'Validation error (reason required)' },
+			404: { description: 'KYC session not found' },
+		},
+	}),
+	zValidator('json', rejectKycSchema),
+	async (c) => {
 	const { sessionId } = c.req.param();
 	const { reason } = c.req.valid('json');
 	const adminUser = { id: 'poc-admin' }; // POC: no auth

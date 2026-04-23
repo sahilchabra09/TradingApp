@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { upgradeWebSocket } from 'hono/bun';
-import { zValidator } from '@hono/zod-validator';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
 import Decimal from 'decimal.js';
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db';
@@ -348,7 +348,20 @@ async function buildHoldingsSnapshot(userId: string) {
 	};
 }
 
-paperTradingRoutes.get('/status', requireAuth, async (c) => {
+paperTradingRoutes.get(
+	'/status',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Paper trading eligibility status',
+		description: 'Returns whether the user can activate or trade on a paper trading account.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Status returned' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	const eligibility = await getPaperEligibility(user);
 
@@ -362,7 +375,21 @@ paperTradingRoutes.get('/status', requireAuth, async (c) => {
 	});
 });
 
-paperTradingRoutes.get('/account', requireAuth, async (c) => {
+paperTradingRoutes.get(
+	'/account',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Get paper trading account',
+		description: 'Returns the paper trading wallet balance and account metadata.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Account returned' },
+			401: { description: 'Not authenticated' },
+			404: { description: 'Paper trading account not activated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	const wallet = await getPaperWallet(user.id);
 
@@ -381,7 +408,21 @@ paperTradingRoutes.get('/account', requireAuth, async (c) => {
 	});
 });
 
-paperTradingRoutes.post('/account', requireAuth, async (c) => {
+paperTradingRoutes.post(
+	'/account',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Activate paper trading account',
+		description: 'Creates a paper wallet with $100,000 starting balance and sets accountType to "demo_trader". Requires completed KYC.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			201: { description: 'Account activated' },
+			401: { description: 'Not authenticated' },
+			403: { description: 'KYC not completed' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	try {
 		const user = c.get('user');
 		const eligibility = await getPaperEligibility(user);
@@ -420,7 +461,20 @@ paperTradingRoutes.post('/account', requireAuth, async (c) => {
 // ─── Asset search ─────────────────────────────────────────────────────────────
 // GET /assets?q=apple&limit=50
 // Returns matching US equity assets from the cached Alpaca asset list.
-paperTradingRoutes.get('/assets', requireAuth, async (c) => {
+paperTradingRoutes.get(
+	'/assets',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Search assets',
+		description: 'Searches the cached Alpaca US equity asset list. Query params: q (search term), limit (1-100, default 50).',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Matching assets returned' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const q     = (c.req.query('q') || '').trim();
 	const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '50', 10) || 50, 1), 100);
 
@@ -437,7 +491,20 @@ paperTradingRoutes.get('/assets', requireAuth, async (c) => {
 // ─── Batch market data ────────────────────────────────────────────────────────
 // GET /marketdata/batch?symbols=AAPL,MSFT,...
 // Returns live quotes for up to 100 symbols in a single request.
-paperTradingRoutes.get('/marketdata/batch', requireAuth, async (c) => {
+paperTradingRoutes.get(
+	'/marketdata/batch',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Batch market data',
+		description: 'Returns live quotes for up to 100 symbols in one request. Query param: symbols (comma-separated, e.g. "AAPL,MSFT").',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Quotes returned' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const raw = c.req.query('symbols') || '';
 	const symbols = raw
 		.split(',')
@@ -492,6 +559,17 @@ paperTradingRoutes.get('/marketdata/batch', requireAuth, async (c) => {
 // GET /marketdata/:symbol/history?period=1D|1W|1M|3M|1Y
 paperTradingRoutes.get(
 	'/marketdata/:symbol/history',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Historical price bars',
+		description: 'Returns OHLCV bars for a symbol. Query param: period (1D | 1W | 1M | 3M | 1Y).',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Historical bars returned' },
+			400: { description: 'Invalid symbol or period' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
 	requireAuth,
 	zValidator('param', paperSymbolParamsSchema),
 	zValidator('query', paperHistoryQuerySchema),
@@ -513,6 +591,17 @@ paperTradingRoutes.get(
 // ─── Single symbol market data ────────────────────────────────────────────────
 paperTradingRoutes.get(
 	'/marketdata/:symbol',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Single symbol market data',
+		description: 'Returns the latest quote snapshot for a single symbol from Alpaca.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Quote returned' },
+			400: { description: 'Invalid symbol' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
 	requireAuth,
 	zValidator('param', paperSymbolParamsSchema),
 	async (c) => {
@@ -557,6 +646,18 @@ paperTradingRoutes.get(
 
 paperTradingRoutes.post(
 	'/trade',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Execute paper trade',
+		description: 'Executes a simulated buy or sell order with 0.1% slippage. Body: { symbol, side: "buy"|"sell", quantity }. Requires active paper account and KYC.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			201: { description: 'Trade executed' },
+			400: { description: 'Insufficient balance or quantity, validation error' },
+			401: { description: 'Not authenticated' },
+			403: { description: 'KYC not approved or paper account not activated' },
+		},
+	}),
 	requireAuth,
 	zValidator('json', paperTradeRequestSchema),
 	async (c) => {
@@ -949,6 +1050,17 @@ paperTradingRoutes.get(
 
 paperTradingRoutes.get(
 	'/holdings/:userId',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Get holdings snapshot',
+		description: 'Returns live P&L snapshot for all holdings: quantity, avg price, current price, market value, PnL. Users can only access their own unless they are an admin.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Holdings snapshot returned' },
+			401: { description: 'Not authenticated' },
+			403: { description: 'Access to another user\'s holdings denied' },
+		},
+	}),
 	requireAuth,
 	zValidator('param', paperUserParamsSchema),
 	async (c) => {
@@ -982,6 +1094,17 @@ paperTradingRoutes.get(
 
 paperTradingRoutes.get(
 	'/portfolio/:userId',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Get portfolio summary',
+		description: 'Returns aggregated portfolio totals: cash, holdings value, total value, and total P&L.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Portfolio summary returned' },
+			401: { description: 'Not authenticated' },
+			403: { description: 'Access denied' },
+		},
+	}),
 	requireAuth,
 	zValidator('param', paperUserParamsSchema),
 	async (c) => {
@@ -1012,6 +1135,17 @@ paperTradingRoutes.get(
 
 paperTradingRoutes.get(
 	'/trades/:userId',
+	describeRoute({
+		tags: ['Paper Trading'],
+		summary: 'Get trade history',
+		description: 'Returns the full trade history for a user, ordered by timestamp descending.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Trade history returned' },
+			401: { description: 'Not authenticated' },
+			403: { description: 'Access denied' },
+		},
+	}),
 	requireAuth,
 	zValidator('param', paperUserParamsSchema),
 	async (c) => {

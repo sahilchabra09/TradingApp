@@ -7,6 +7,7 @@ import { Animated, Keyboard } from 'react-native';
 import { useColorScheme as useNativeColorScheme } from 'react-native';
 import { lightTheme, darkTheme, type Theme } from './theme';
 import type { PaperMarketData } from './paper-api';
+import type { NewsArticle } from './news-api';
 
 /**
  * Hook to get the current theme
@@ -584,4 +585,234 @@ export const usePaperMarketStream = ({
 		subscribe,
 		unsubscribe,
 	};
+};
+
+// ─── useNewsStream ────────────────────────────────────────────────────────────
+
+type UseNewsStreamOptions = {
+	enabled?: boolean;
+	/**
+	 * Initial symbol filter.  Pass ["*"] or leave empty for all news.
+	 * You can dynamically subscribe/unsubscribe after mount.
+	 */
+	symbols?: string[];
+	getToken: () => Promise<string | null>;
+	/** Called when the server sends the catch-up history batch. */
+	onHistory?: (articles: NewsArticle[]) => void;
+	/** Called for every new real-time article. */
+	onArticle?: (article: NewsArticle) => void;
+	onError?: (message: string) => void;
+	onReady?: () => void;
+};
+
+type NewsConnectionState = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed' | 'error';
+
+/**
+ * Maintains a real-time WebSocket connection to the backend news stream
+ * (`/api/news/stream`).  The server fans out new Alpaca news articles as
+ * they arrive.  On connect the server sends the last 50 buffered articles
+ * as a "history" message so the feed is never empty.
+ *
+ * Auth note: the Authorization header is forwarded via the third argument of
+ * the WebSocket constructor — a React Native / Expo extension not available
+ * in browser WebSocket.
+ */
+export const useNewsStream = ({
+	enabled = true,
+	symbols = [],
+	getToken,
+	onHistory,
+	onArticle,
+	onError,
+	onReady,
+}: UseNewsStreamOptions) => {
+	const socketRef    = useRef<WebSocket | null>(null);
+	const callbacksRef = useRef({ onHistory, onArticle, onError, onReady });
+	const [connectionState, setConnectionState] = useState<NewsConnectionState>('idle');
+	const [lastArticleAt, setLastArticleAt]     = useState<Date | null>(null);
+
+	// Keep callback refs fresh without causing reconnects
+	useEffect(() => {
+		callbacksRef.current = { onHistory, onArticle, onError, onReady };
+	}, [onHistory, onArticle, onError, onReady]);
+
+	const symbolsParam = [
+		...new Set(
+			(symbols.length === 0 ? ['*'] : symbols)
+				.map((s) => s.trim().toUpperCase())
+				.filter(Boolean)
+		),
+	].join(',');
+
+	const send = useCallback((payload: object) => {
+		const socket = socketRef.current;
+		if (!socket || socket.readyState !== WebSocket.OPEN) return;
+		socket.send(JSON.stringify(payload));
+	}, []);
+
+	useEffect(() => {
+		if (!enabled) {
+			setConnectionState('idle');
+			socketRef.current?.close();
+			socketRef.current = null;
+			return;
+		}
+
+		let isDisposed        = false;
+		let reconnectAttempt  = 0;
+		let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+		let scheduleReconnect: () => void = () => {};
+
+		const connect = async () => {
+			if (isDisposed) return;
+			setConnectionState(reconnectAttempt === 0 ? 'connecting' : 'reconnecting');
+
+			const token = await getToken();
+			if (!token || isDisposed) {
+				if (!isDisposed) {
+					setConnectionState('error');
+					callbacksRef.current.onError?.('Please sign in to access news.');
+				}
+				return;
+			}
+
+			const rawServerUrl = process.env.EXPO_PUBLIC_SERVER_URL;
+			const wsBase = toWebSocketBaseUrl(rawServerUrl || 'http://localhost:3004');
+			const streamUrl = `${wsBase}/api/news/stream?symbols=${encodeURIComponent(symbolsParam)}`;
+
+			const socket = new (WebSocket as any)(
+				streamUrl,
+				undefined,
+				{
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'ngrok-skip-browser-warning': '1',
+					},
+				} as any
+			) as WebSocket;
+			socketRef.current = socket;
+
+			socket.onopen = () => {
+				if (isDisposed) return;
+				reconnectAttempt = 0;
+				setConnectionState('open');
+			};
+
+			socket.onmessage = (event) => {
+				if (isDisposed || typeof event.data !== 'string') return;
+				try {
+					const message = JSON.parse(event.data) as {
+						type?: string;
+						articles?: NewsArticle[];
+						article?: NewsArticle;
+						symbols?: string[];
+						message?: string;
+						asOf?: string;
+					};
+
+					switch (message.type) {
+						case 'ready':
+							callbacksRef.current.onReady?.();
+							return;
+						case 'history':
+							if (message.articles) {
+								callbacksRef.current.onHistory?.(message.articles);
+							}
+							return;
+						case 'article':
+							if (message.article) {
+								setLastArticleAt(new Date());
+								callbacksRef.current.onArticle?.(message.article);
+							}
+							return;
+						case 'pong':
+							return;
+						case 'error':
+							callbacksRef.current.onError?.(
+								message.message || 'News stream error.'
+							);
+							return;
+						default:
+							return;
+					}
+				} catch (err) {
+					callbacksRef.current.onError?.(
+						err instanceof Error ? err.message : 'Invalid news stream payload.'
+					);
+				}
+			};
+
+			socket.onerror = () => {
+				if (isDisposed) return;
+				callbacksRef.current.onError?.(
+					reconnectAttempt < RECONNECT_MAX_ATTEMPTS
+						? 'News stream error. Reconnecting\u2026'
+						: 'News stream failed.'
+				);
+				scheduleReconnect();
+			};
+
+			socket.onclose = () => {
+				if (isDisposed) return;
+				scheduleReconnect();
+			};
+		};
+
+		scheduleReconnect = () => {
+			if (isDisposed) return;
+			if (reconnectAttempt >= RECONNECT_MAX_ATTEMPTS) {
+				setConnectionState('error');
+				callbacksRef.current.onError?.(
+					'News stream could not reconnect. Please reload.'
+				);
+				return;
+			}
+			const delay = getReconnectDelay(reconnectAttempt);
+			reconnectAttempt++;
+			setConnectionState('reconnecting');
+			reconnectTimer = setTimeout(() => {
+				reconnectTimer = null;
+				if (!isDisposed) void connect();
+			}, delay);
+		};
+
+		void connect();
+
+		return () => {
+			isDisposed = true;
+			if (reconnectTimer !== null) {
+				clearTimeout(reconnectTimer);
+				reconnectTimer = null;
+			}
+			const socket = socketRef.current;
+			if (socket && socket.readyState !== WebSocket.CLOSED) socket.close();
+			socketRef.current = null;
+		};
+	}, [enabled, getToken, symbolsParam]);
+
+	/** Subscribe to additional symbols after mount */
+	const subscribe = useCallback(
+		(nextSymbols: string[]) => {
+			send({
+				type: 'subscribe',
+				symbols: [...new Set(nextSymbols.map((s) => s.trim().toUpperCase()).filter(Boolean))],
+			});
+		},
+		[send]
+	);
+
+	/** Unsubscribe from symbols */
+	const unsubscribe = useCallback(
+		(nextSymbols: string[]) => {
+			send({
+				type: 'unsubscribe',
+				symbols: [...new Set(nextSymbols.map((s) => s.trim().toUpperCase()).filter(Boolean))],
+			});
+		},
+		[send]
+	);
+
+	const ping = useCallback(() => send({ type: 'ping' }), [send]);
+
+	return { connectionState, lastArticleAt, subscribe, unsubscribe, ping };
 };

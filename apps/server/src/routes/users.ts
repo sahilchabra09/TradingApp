@@ -5,7 +5,7 @@
  */
 
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { db } from '../db';
 import { users, auditLogs } from '../db/schema';
@@ -32,7 +32,20 @@ const updateProfileSchema = z.object({
 /**
  * Get current user profile
  */
-userRoutes.get('/profile', requireAuth, async (c) => {
+userRoutes.get(
+	'/profile',
+	describeRoute({
+		tags: ['Users'],
+		summary: 'Get current user profile',
+		description: 'Returns the authenticated user\'s full profile.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'User profile returned' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 
 	return ResponseHelper.success(c, {
@@ -61,6 +74,17 @@ userRoutes.get('/profile', requireAuth, async (c) => {
  */
 userRoutes.patch(
 	'/profile',
+	describeRoute({
+		tags: ['Users'],
+		summary: 'Update user profile',
+		description: 'Partially updates the authenticated user\'s profile. Name changes are also synced to Clerk.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Profile updated successfully' },
+			400: { description: 'Validation error' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
 	requireAuth,
 	zValidator('json', updateProfileSchema),
 	async (c) => {
@@ -103,7 +127,22 @@ userRoutes.patch(
 /**
  * Get user dashboard summary
  */
-userRoutes.get('/dashboard', requireAuth, requireKYC, async (c) => {
+userRoutes.get(
+	'/dashboard',
+	describeRoute({
+		tags: ['Users'],
+		summary: 'Dashboard summary',
+		description: 'Returns the authenticated user\'s portfolio overview, wallet balances, holdings count, and recent trades. Requires completed KYC.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Dashboard data returned' },
+			401: { description: 'Not authenticated' },
+			403: { description: 'KYC not approved' },
+		},
+	}),
+	requireAuth,
+	requireKYC,
+	async (c) => {
 	const user = c.get('user');
 
 	// Get user's wallets
@@ -149,7 +188,21 @@ userRoutes.get('/dashboard', requireAuth, requireKYC, async (c) => {
 /**
  * Delete user account (soft delete)
  */
-userRoutes.delete('/account', requireAuth, async (c) => {
+userRoutes.delete(
+	'/account',
+	describeRoute({
+		tags: ['Users'],
+		summary: 'Delete account',
+		description: 'Soft-deletes the account. Fails if the user has open positions. Also deletes the user from Clerk.',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Account deleted successfully' },
+			400: { description: 'Open positions exist' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	const clerkAuth = c.get('clerkAuth');
 
@@ -195,7 +248,20 @@ userRoutes.delete('/account', requireAuth, async (c) => {
 /**
  * Get user activity log
  */
-userRoutes.get('/activity', requireAuth, async (c) => {
+userRoutes.get(
+	'/activity',
+	describeRoute({
+		tags: ['Users'],
+		summary: 'Get activity log',
+		description: 'Returns a paginated audit log of events for the authenticated user. Query params: page (default 1), limit (default 20).',
+		security: [{ bearerAuth: [] }],
+		responses: {
+			200: { description: 'Activity log returned' },
+			401: { description: 'Not authenticated' },
+		},
+	}),
+	requireAuth,
+	async (c) => {
 	const user = c.get('user');
 	const page = parseInt(c.req.query('page') || '1');
 	const limit = parseInt(c.req.query('limit') || '20');

@@ -12,6 +12,9 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { formatCurrency, formatPercentage } from '@/lib/formatters';
 import { StockChart } from '@/components/StockChart';
+import { CompactNewsCard } from '@/components/NewsCard';
+import { fetchNewsForSymbol } from '@/lib/news-api';
+import type { NewsArticle } from '@/lib/news-api';
 import {
 	getPaperAccount,
 	getPaperHoldings,
@@ -74,6 +77,9 @@ export default function AssetDetailScreen() {
 	const [chartLoading, setChartLoading] = useState(false);
 	const [chartWidth, setChartWidth]     = useState(0);
 
+	const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
+	const [newsLoading, setNewsLoading]   = useState(false);
+
 	// ── Load quote + holdings ──────────────────────────────────────────────────
 	const loadDetails = useCallback(async () => {
 		if (!symbol || !isSignedIn) { setIsLoading(false); return; }
@@ -122,6 +128,22 @@ export default function AssetDetailScreen() {
 	const handlePeriodChange = useCallback((p: ChartPeriod) => {
 		setChartPeriod(p);
 	}, []);
+
+	// ── Load latest news for this symbol ──────────────────────────────────────
+	const loadNews = useCallback(async () => {
+		if (!symbol || !isSignedIn) return;
+		try {
+			setNewsLoading(true);
+			const result = await fetchNewsForSymbol(symbol, 4, stableGetToken);
+			setNewsArticles(result.news);
+		} catch {
+			setNewsArticles([]);
+		} finally {
+			setNewsLoading(false);
+		}
+	}, [isSignedIn, symbol]);
+
+	useEffect(() => { void loadNews(); }, [loadNews]);
 
 	const isPositive  = useMemo(() => toNumber(holding?.pnlPercent) >= 0, [holding?.pnlPercent]);
 	const companyName = getCompanyName(symbol, quote);
@@ -282,6 +304,65 @@ export default function AssetDetailScreen() {
 							</View>
 						)}
 					</Card>
+
+					{/* ── Latest News ───────────────────────────────────────── */}
+					<View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 28, marginBottom: 12 }}>
+						<Text style={{ color: theme.colors.text.primary, fontSize: 18, fontWeight: '700', flex: 1 }}>
+							Latest News
+						</Text>
+						{newsArticles.length > 0 && (
+							<TouchableOpacity
+								onPress={() =>
+									router.push({
+										pathname: '/(drawer)/(tabs)/news',
+										params: { symbol },
+									})
+								}
+								style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+							>
+								<Text style={{ color: '#10B981', fontSize: 13, fontWeight: '600' }}>
+									View All
+								</Text>
+								<Ionicons name="chevron-forward" size={14} color="#10B981" />
+							</TouchableOpacity>
+						)}
+					</View>
+
+					{newsLoading ? (
+						<Text style={{ color: theme.colors.text.secondary, fontSize: 13, textAlign: 'center', paddingVertical: 16 }}>
+							Loading news…
+						</Text>
+					) : newsArticles.length > 0 ? (
+						<View>
+							{newsArticles.map((article) => (
+								<CompactNewsCard
+									key={article.id}
+									article={article}
+									onPress={() =>
+										router.push({
+											pathname: '/news/article',
+											params: { data: JSON.stringify(article) },
+										})
+									}
+								/>
+							))}
+						</View>
+					) : (
+						<View
+							style={{
+								padding: 20,
+								borderRadius: 14,
+								backgroundColor: 'rgba(255,255,255,0.03)',
+								borderWidth: 1,
+								borderColor: 'rgba(255,255,255,0.07)',
+								alignItems: 'center',
+							}}
+						>
+							<Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
+								No recent news for {symbol}.
+							</Text>
+						</View>
+					)}
 				</ScrollView>
 			</SafeAreaView>
 		</LinearGradient>
