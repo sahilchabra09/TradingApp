@@ -245,16 +245,16 @@ export default function AssetDetailScreen() {
 							<Text style={{ color: theme.colors.text.secondary }}>Loading...</Text>
 						) : holding ? (
 							<View style={{ gap: 12 }}>
-								<StatRow label="Quantity"      value={holding.quantity} />
-								<StatRow label="Average price" value={formatCurrency(toNumber(holding.avgPrice))} />
-								<StatRow label="Current price" value={formatCurrency(toNumber(holding.currentPrice))} />
-								<StatRow label="Market value"  value={formatCurrency(toNumber(holding.marketValue))} />
-								<StatRow
-									label="Unrealized P/L"
-									value={`${formatCurrency(toNumber(holding.pnlAmount))} (${formatPercentage(toNumber(holding.pnlPercent))})`}
-									valueColor={isPositive ? theme.colors.success : theme.colors.error}
-									isLast
-								/>
+							<StatRow label="Shares owned"    value={holding.quantity} />
+							<StatRow label="Cost per share"  value={formatCurrency(toNumber(holding.avgPrice))} />
+							<StatRow label="Current price"   value={formatCurrency(toNumber(holding.currentPrice))} />
+							<StatRow label="Current value"   value={formatCurrency(toNumber(holding.marketValue))} />
+							<StatRow
+								label="Profit / Loss"
+								value={`${formatCurrency(toNumber(holding.pnlAmount))} (${formatPercentage(toNumber(holding.pnlPercent))})`}
+								valueColor={isPositive ? theme.colors.success : theme.colors.error}
+								isLast
+							/>
 							</View>
 						) : (
 							<View style={{ alignItems: 'center', paddingVertical: 20 }}>

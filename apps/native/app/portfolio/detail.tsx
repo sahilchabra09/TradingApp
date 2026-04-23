@@ -333,7 +333,7 @@ export default function PortfolioDetailScreen() {
 			<SafeAreaView className="flex-1 bg-[#050A05]">
 				<View className="flex-1 items-center justify-center px-6">
 					<Text className="text-center text-base text-[#A8D5B3]">
-						Sign in to view your demo portfolio.
+						Sign in to view your paper portfolio.
 					</Text>
 				</View>
 			</SafeAreaView>
@@ -345,7 +345,7 @@ export default function PortfolioDetailScreen() {
 			<SafeAreaView className="flex-1 bg-[#050A05]">
 				<View className="flex-1 items-center justify-center">
 					<Spinner color="#00D35A" />
-					<Text className="mt-3 text-sm text-[#A8D5B3]">Loading demo portfolio...</Text>
+					<Text className="mt-3 text-sm text-[#A8D5B3]">Loading paper portfolio...</Text>
 				</View>
 			</SafeAreaView>
 		);
@@ -356,11 +356,11 @@ export default function PortfolioDetailScreen() {
 			<SafeAreaView className="flex-1 bg-[#050A05]">
 				<View className="flex-1 px-4 py-6">
 					<View className="rounded-[28px] border border-amber-300/30 bg-amber-500/10 px-5 py-5">
-						<Text className="text-lg font-semibold text-amber-200">Demo portfolio locked</Text>
-						<Text className="mt-2 text-sm leading-6 text-amber-100">
-							You can browse live market data before trading. To unlock paper portfolio and P&L,
-							complete KYC and activate your demo account.
-						</Text>
+					<Text className="text-lg font-semibold text-amber-200">Paper portfolio locked</Text>
+					<Text className="mt-2 text-sm leading-6 text-amber-100">
+						You can browse live market data before trading. To unlock paper portfolio and P&L,
+						complete KYC and activate your paper account.
+					</Text>
 						<Text className="mt-3 text-xs text-amber-100">
 							KYC: {state.status?.kycStatus || 'not_started'} · Account:{' '}
 							{state.status?.accountType || 'market_data_only'}
@@ -476,13 +476,13 @@ export default function PortfolioDetailScreen() {
 							No positions yet
 						</Text>
 						<Text className="mt-2 text-center text-sm leading-6 text-[#A8D5B3]">
-							Your demo wallet is active. Place a simulated order to see live market P&L here.
+							Your paper wallet is active. Place a simulated order to see live market P&L here.
 						</Text>
 						<Pressable
 							className="mt-5 self-center rounded-full bg-[#00D35A] px-5 py-3"
 							onPress={() => router.push('/orders/order-form')}
 						>
-							<Text className="font-semibold text-[#031108]">Place demo order</Text>
+							<Text className="font-semibold text-[#031108]">Place paper order</Text>
 						</Pressable>
 					</View>
 				}

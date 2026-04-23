@@ -72,7 +72,7 @@ export default function DemoDashboardScreen() {
 			<SafeAreaView className="flex-1 bg-[#050A05]">
 				<View className="flex-1 items-center justify-center px-6">
 					<Text className="text-center text-base text-[#A8D5B3]">
-						Sign in to view your demo dashboard.
+						Sign in to view your paper dashboard.
 					</Text>
 				</View>
 			</SafeAreaView>
@@ -84,7 +84,7 @@ export default function DemoDashboardScreen() {
 			<SafeAreaView className="flex-1 bg-[#050A05]">
 				<View className="flex-1 items-center justify-center">
 					<Spinner color="#00D35A" />
-					<Text className="mt-3 text-sm text-[#A8D5B3]">Loading demo dashboard...</Text>
+					<Text className="mt-3 text-sm text-[#A8D5B3]">Loading paper dashboard...</Text>
 				</View>
 			</SafeAreaView>
 		);
@@ -147,14 +147,14 @@ export default function DemoDashboardScreen() {
 								void activatePaperAccount(stableGetToken).then(() => loadDashboard());
 							}}
 						>
-							<Text className="text-base font-semibold text-[#031108]">Activate demo account</Text>
+							<Text className="text-base font-semibold text-[#031108]">Activate paper account</Text>
 						</Pressable>
 					) : null}
 					<Pressable
 						className="items-center rounded-full border border-white/10 bg-white/5 px-5 py-4"
 						onPress={() => router.push('/orders/order-form')}
 					>
-						<Text className="text-base font-semibold text-[#E6F8EA]">Place demo trade</Text>
+						<Text className="text-base font-semibold text-[#E6F8EA]">Place paper trade</Text>
 					</Pressable>
 					<Pressable
 						className="items-center rounded-full border border-white/10 bg-white/5 px-5 py-4"

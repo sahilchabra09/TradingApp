@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/hooks';
 import { Spinner } from '@/components/Spinner';
 
@@ -34,6 +35,7 @@ export default function DocumentCaptureScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [verificationCompleted, setVerificationCompleted] = useState(false);
+  const verificationCompletedRef = useRef(false);
   
   // Camera and microphone permissions for WebView
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -126,8 +128,9 @@ export default function DocumentCaptureScreen() {
   }, []);
 
   // Handle verification completion
-  const handleVerificationComplete = async (success: boolean) => {
-    if (verificationCompleted) return; // Prevent double handling
+  const handleVerificationComplete = useCallback(async (success: boolean) => {
+    if (verificationCompletedRef.current) return; // Prevent double handling
+    verificationCompletedRef.current = true;
     setVerificationCompleted(true);
 
     console.log('Verification completed, success:', success);
@@ -143,7 +146,7 @@ export default function DocumentCaptureScreen() {
         ...(params.sessionId ? { sessionId: params.sessionId } : {}),
       },
     });
-  };
+  }, [params.sessionId]);
 
   // Handle WebView messages (from injected JavaScript)
   const handleWebViewMessage = useCallback((event: any) => {
@@ -230,7 +233,7 @@ export default function DocumentCaptureScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>⚠️</Text>
+          <Ionicons name="warning-outline" size={64} color="#F59E0B" style={{ marginBottom: 16 }} />
           <Text style={{ 
             color: theme.colors.text.primary, 
             fontSize: 18, 
@@ -333,7 +336,7 @@ export default function DocumentCaptureScreen() {
           padding: 20,
           zIndex: 10,
         }}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>😔</Text>
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" style={{ marginBottom: 16 }} />
           <Text style={{ 
             color: theme.colors.text.primary, 
             fontSize: 18, 
@@ -385,9 +388,23 @@ export default function DocumentCaptureScreen() {
         style={{ flex: 1 }}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
+        onShouldStartLoadWithRequest={(request) => {
+          // Intercept our custom callback scheme before the WebView tries to load it
+          // This prevents the net::ERR_UNKNOWN_URL_SCHEME error
+          if (request.url.startsWith(CALLBACK_SCHEME)) {
+            const isSuccess = COMPLETION_PATHS.some(path => request.url.includes(path));
+            void handleVerificationComplete(isSuccess);
+            return false; // Block WebView from navigating to custom scheme
+          }
+          return true;
+        }}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
           console.error('WebView error:', nativeEvent);
+          // Ignore errors triggered by our custom callback URL scheme
+          if (nativeEvent.url?.startsWith(CALLBACK_SCHEME)) {
+            return;
+          }
           setLoadError('Unable to load verification page. Please check your internet connection.');
           setLoading(false);
         }}

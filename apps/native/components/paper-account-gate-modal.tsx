@@ -45,6 +45,7 @@ export function PaperAccountGateModal() {
 			return null;
 		}
 
+		// KYC verified (Didit approved or awaiting admin) but demo account not yet activated
 		if (status.canActivateDemo && !status.hasDemoAccount) {
 			return 'unlock_demo';
 		}
@@ -95,16 +96,16 @@ export function PaperAccountGateModal() {
 				<Text className="text-xs uppercase tracking-[1.6px] text-[#7BAA88]">
 					Paper Trading Setup
 				</Text>
-					<Text className="mt-2 text-2xl font-bold text-[#E6F8EA]">
-						{step === 'kyc_required'
-							? 'Complete KYC to unlock demo trading'
-							: 'KYC complete. Unlock your demo account'}
-					</Text>
-					<Text className="mt-3 text-sm leading-6 text-[#A8D5B3]">
-						{step === 'kyc_required'
-							? 'Finish KYC verification first. Then you can unlock your demo account with $100,000 virtual cash.'
-							: 'Activate your demo account now to receive $100,000 virtual cash and start paper trading with live market prices.'}
-					</Text>
+				<Text className="mt-2 text-2xl font-bold text-[#E6F8EA]">
+					{step === 'kyc_required'
+						? 'Complete KYC to unlock paper trading'
+						: 'Unlock your paper account'}
+				</Text>
+				<Text className="mt-3 text-sm leading-6 text-[#A8D5B3]">
+					{step === 'kyc_required'
+						? 'Finish KYC verification first. Then you can unlock your paper account with $100,000 virtual cash.'
+						: 'Activate your paper account to receive $100,000 virtual cash and start paper trading with live market prices. Once the ReTrading team approves your account, you will be able to trade for real.'}
+				</Text>
 
 					{error ? (
 						<View className="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2">

@@ -6,8 +6,7 @@
 import { Platform } from 'react-native';
 
 // API Configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://4469-2404-7c80-74-f723-9525-1b72-5e4b-bf37.ngrok-free.app/api/v1';
-
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 // Session status types
 export type KycSessionStatus = 
 	| 'created' 

@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -26,27 +27,27 @@ export default function KYCStartScreen() {
       id: 1, 
       title: 'Document Upload', 
       description: 'Upload your Aadhaar, PAN, or Passport', 
-      emoji: '📸',
+      icon: 'camera-outline' as const,
     },
     { 
       id: 2, 
       title: 'Face Verification', 
       description: 'Quick selfie for identity confirmation', 
-      emoji: '🤳',
+      icon: 'scan-outline' as const,
     },
     { 
       id: 3, 
       title: 'Instant Review', 
       description: 'AI-powered verification in seconds', 
-      emoji: '⚡',
+      icon: 'flash-outline' as const,
     },
   ];
 
   // Accepted documents
   const acceptedDocuments = [
-    { type: 'Aadhaar Card', icon: '🪪' },
-    { type: 'PAN Card', icon: '💳' },
-    { type: 'Indian Passport', icon: '📕' },
+    { type: 'Aadhaar Card', icon: 'card-outline' as const },
+    { type: 'PAN Card',     icon: 'id-card-outline' as const },
+    { type: 'Indian Passport', icon: 'book-outline' as const },
   ];
 
   // Start verification process
@@ -120,9 +121,9 @@ export default function KYCStartScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <Text style={{ fontSize: 64, textAlign: 'center', marginTop: 40, marginBottom: 24 }}>
-            📋
-          </Text>
+          <View style={{ alignItems: 'center', marginTop: 40, marginBottom: 24 }}>
+            <Ionicons name="clipboard-outline" size={72} color={theme.colors.accent.primary} />
+          </View>
           <Text style={{ 
             fontSize: 30, 
             fontWeight: 'bold', 
@@ -178,7 +179,7 @@ export default function KYCStartScreen() {
                   justifyContent: 'center', 
                   marginRight: 16 
                 }}>
-                  <Text style={{ fontSize: 24 }}>{step.emoji}</Text>
+                  <Ionicons name={step.icon} size={24} color={theme.colors.accent.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ 
@@ -199,21 +200,23 @@ export default function KYCStartScreen() {
 
           {/* Accepted documents */}
           <Card style={{ marginBottom: 24 }}>
-            <Text style={{ 
-              color: theme.colors.text.primary, 
-              fontSize: 16, 
-              fontWeight: '600', 
-              marginBottom: 12 
-            }}>
-              🇮🇳 Accepted Documents
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="flag-outline" size={18} color={theme.colors.accent.primary} style={{ marginRight: 6 }} />
+              <Text style={{ 
+                color: theme.colors.text.primary, 
+                fontSize: 16, 
+                fontWeight: '600',
+              }}>
+                Accepted Documents
+              </Text>
+            </View>
             {acceptedDocuments.map((doc, index) => (
               <View key={index} style={{ 
                 flexDirection: 'row', 
                 alignItems: 'center', 
                 marginBottom: 8 
               }}>
-                <Text style={{ fontSize: 16, marginRight: 8 }}>{doc.icon}</Text>
+                <Ionicons name={doc.icon} size={16} color={theme.colors.text.secondary} style={{ marginRight: 8 }} />
                 <Text style={{ color: theme.colors.text.secondary, fontSize: 14 }}>
                   {doc.type}
                 </Text>
@@ -244,14 +247,16 @@ export default function KYCStartScreen() {
           )}
 
           {/* Privacy notice */}
-          <Text style={{ 
-            color: theme.colors.text.tertiary, 
-            fontSize: 11, 
-            textAlign: 'center',
-            paddingHorizontal: 20 
-          }}>
-            🔒 Your data is encrypted and securely processed by Didit, a certified identity verification provider.
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
+            <Ionicons name="lock-closed-outline" size={12} color={theme.colors.text.tertiary} style={{ marginRight: 4 }} />
+            <Text style={{ 
+              color: theme.colors.text.tertiary, 
+              fontSize: 11, 
+              textAlign: 'center',
+            }}>
+              Your data is encrypted and securely processed by Didit, a certified identity verification provider.
+            </Text>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

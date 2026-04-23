@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@clerk/clerk-expo';
 import { Spinner } from '@/components/Spinner';
 import {
@@ -100,6 +101,13 @@ export default function HomeScreen() {
 		void loadDashboard();
 	}, [loadDashboard]);
 
+	// Re-fetch every time the tab comes into focus (e.g. after placing a trade)
+	useFocusEffect(
+		useCallback(() => {
+			void loadDashboard();
+		}, [loadDashboard])
+	);
+
 	const totals = useMemo(() => {
 		const totalValue = toNumber(state.portfolio?.totalValue);
 		const totalPnl = toNumber(state.portfolio?.totalPnl);
@@ -110,6 +118,45 @@ export default function HomeScreen() {
 			totalPnlPercent,
 		};
 	}, [state.holdings?.totals?.totalPnlPercent, state.portfolio?.totalPnl, state.portfolio?.totalValue]);
+
+	const accountBadge = useMemo(() => {
+		if (!state.status) return null;
+		const { kycStatus, hasDemoAccount } = state.status;
+		if (hasDemoAccount && kycStatus === 'approved') {
+			return { label: 'Live Trading', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
+		}
+		if (hasDemoAccount) {
+			return { label: 'Paper Trading', color: '#60A5FA', bg: 'rgba(96, 165, 250, 0.15)' };
+		}
+		if (kycStatus === 'pending') {
+			return { label: 'Pending Approval', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' };
+		}
+		if (kycStatus === 'rejected') {
+			return { label: 'KYC Rejected', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' };
+		}
+		if (kycStatus === 'resubmission_required') {
+			return { label: 'Resubmit Required', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' };
+		}
+		return { label: 'KYC Required', color: '#9CA3AF', bg: 'rgba(156, 163, 175, 0.15)' };
+	}, [state.status]);
+
+	const portfolioStatusMessage = useMemo(() => {
+		if (!state.status) return null;
+		const { kycStatus, canActivateDemo } = state.status;
+		if (kycStatus === 'rejected') {
+			return { text: 'KYC was rejected. Please resubmit to continue.', color: '#EF4444' };
+		}
+		if (kycStatus === 'resubmission_required') {
+			return { text: 'Additional documents required. Please resubmit KYC.', color: '#F59E0B' };
+		}
+		if (kycStatus === 'not_started') {
+			return { text: 'Complete identity verification to unlock paper trading.', color: '#9CA3AF' };
+		}
+		if (canActivateDemo) {
+			return { text: 'Identity verified. Activate your paper account to start paper trading.', color: '#10B981' };
+		}
+		return { text: 'Complete KYC to begin trading.', color: '#9CA3AF' };
+	}, [state.status]);
 
 	if (!isSignedIn) {
 		return (
@@ -147,11 +194,25 @@ export default function HomeScreen() {
 								borderColor: 'rgba(16, 185, 129, 0.2)',
 							}}
 						>
-							<Text style={{ color: '#9CA3AF', fontSize: 13, marginBottom: 8, letterSpacing: 0.5 }}>
+						<View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+							<Text style={{ color: '#9CA3AF', fontSize: 13, letterSpacing: 0.5 }}>
 								TOTAL PORTFOLIO VALUE
 							</Text>
+							{accountBadge && (
+								<View style={{
+									backgroundColor: accountBadge.bg,
+									paddingHorizontal: 8,
+									paddingVertical: 4,
+									borderRadius: 8,
+								}}>
+									<Text style={{ color: accountBadge.color, fontSize: 11, fontWeight: '600' }}>
+										{accountBadge.label}
+									</Text>
+								</View>
+							)}
+						</View>
 							<Text style={{ color: '#FFFFFF', fontSize: 40, fontWeight: 'bold', marginBottom: 12, letterSpacing: -1 }}>
-								{state.portfolio ? formatCurrency(totals.totalValue) : '--'}
+								{state.portfolio ? formatCurrency(totals.totalValue) : '$0.00'}
 							</Text>
 							{state.portfolio ? (
 								<View
@@ -183,9 +244,11 @@ export default function HomeScreen() {
 									</Text>
 								</View>
 							) : (
-								<Text style={{ color: '#F59E0B' }}>
-									Trading is locked until KYC approval + demo activation.
-								</Text>
+								portfolioStatusMessage ? (
+									<Text style={{ color: portfolioStatusMessage.color, fontSize: 13 }}>
+										{portfolioStatusMessage.text}
+									</Text>
+								) : null
 							)}
 						</View>
 

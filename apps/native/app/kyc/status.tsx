@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -163,12 +164,12 @@ export default function KYCStatusScreen() {
       const nextPaperStatus = await getPaperStatus(stableGetToken);
       setPaperStatus(nextPaperStatus);
       Alert.alert(
-        'Demo Account Unlocked',
-        'Your demo wallet is now active with $100,000 virtual cash.'
+        'Paper Account Unlocked',
+        'Your paper wallet is now active with $100,000 virtual cash.'
       );
     } catch (err) {
       Alert.alert(
-        'Unable to unlock demo account',
+        'Unable to unlock paper account',
         err instanceof Error ? err.message : 'Please try again.'
       );
     } finally {
@@ -212,8 +213,8 @@ export default function KYCStatusScreen() {
     ) {
       unlockPromptShown.current = true;
       Alert.alert(
-        'Unlock Demo Account',
-        'KYC is complete. Unlock your demo account now to receive $100,000 virtual cash.',
+        'Unlock Paper Account',
+        'KYC is complete. Unlock your paper account now to receive $100,000 virtual cash.',
         [
           { text: 'Later', style: 'cancel' },
           {
@@ -244,7 +245,8 @@ export default function KYCStatusScreen() {
     // Didit approved but admin hasn't reviewed yet
     if (currentStatus === 'approved' && adminApproval === 'pending_approval') {
       return {
-        emoji: '\u2705',
+        iconName: 'checkmark-circle' as const,
+        iconColor: '#10B981',
         title: 'Verification Complete',
         description: 'Your identity has been verified successfully. Your account is now pending approval from ReTrading.',
         color: '#F59E0B',
@@ -253,7 +255,8 @@ export default function KYCStatusScreen() {
     // Admin approved — user can trade
     if (currentStatus === 'approved' && adminApproval === 'approved') {
       return {
-        emoji: '\uD83C\uDF89',
+        iconName: 'trophy' as const,
+        iconColor: '#10B981',
         title: 'Account Approved',
         description: 'Your account has been approved by ReTrading. You can now start trading!',
         color: '#10B981',
@@ -262,15 +265,28 @@ export default function KYCStatusScreen() {
     // Admin rejected
     if (adminApproval === 'rejected') {
       return {
-        emoji: '\u274C',
+        iconName: 'close-circle' as const,
+        iconColor: '#EF4444',
         title: 'Approval Declined',
         description: 'Your account was not approved by ReTrading. Please contact support for more information.',
         color: '#EF4444',
       };
     }
-    // Default: use Didit status config
+    // Default: map Didit status to icon
+    const statusIconMap: Record<string, { iconName: React.ComponentProps<typeof Ionicons>['name']; iconColor: string }> = {
+      approved:    { iconName: 'checkmark-circle', iconColor: '#10B981' },
+      declined:    { iconName: 'close-circle',     iconColor: '#EF4444' },
+      rejected:    { iconName: 'close-circle',     iconColor: '#EF4444' },
+      in_progress: { iconName: 'time-outline',     iconColor: '#F59E0B' },
+      pending:     { iconName: 'time-outline',     iconColor: '#F59E0B' },
+      created:     { iconName: 'document-outline', iconColor: '#6B7280' },
+      expired:     { iconName: 'timer-outline',    iconColor: '#6B7280' },
+      abandoned:   { iconName: 'exit-outline',     iconColor: '#6B7280' },
+    };
+    const iconInfo = statusIconMap[currentStatus] ?? { iconName: 'help-circle-outline' as const, iconColor: '#6B7280' };
     return {
-      emoji: statusConfig.emoji,
+      iconName: iconInfo.iconName,
+      iconColor: iconInfo.iconColor,
       title: statusConfig.label,
       description: statusConfig.description,
       color: statusConfig.color,
@@ -314,10 +330,10 @@ export default function KYCStatusScreen() {
             />
           }
         >
-          {/* Status Header */}
-          <Text style={{ fontSize: 64, textAlign: 'center', marginTop: 40, marginBottom: 24 }}>
-            {displayStatus.emoji}
-          </Text>
+          {/* Status Header Icon */}
+          <View style={{ alignItems: 'center', marginTop: 40, marginBottom: 24 }}>
+            <Ionicons name={displayStatus.iconName} size={80} color={displayStatus.iconColor} />
+          </View>
           <Text style={{ 
             fontSize: 30, 
             fontWeight: 'bold', 
@@ -390,13 +406,13 @@ export default function KYCStatusScreen() {
           {paperStatus?.canActivateDemo && !paperStatus?.hasDemoAccount && (
             <Card style={{ marginBottom: 16, backgroundColor: theme.colors.accent.primary + '15' }}>
               <Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
-                Unlock your demo account
+                Unlock your paper account
               </Text>
               <Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 12 }}>
-                KYC is complete. Activate demo trading to receive $100,000 virtual cash.
+                KYC is complete. Activate paper trading to receive $100,000 virtual cash.
               </Text>
               <Button
-                title={unlockingPaper ? 'Unlocking...' : 'Unlock Demo Account'}
+                title={unlockingPaper ? 'Unlocking...' : 'Unlock Paper Account'}
                 onPress={() => {
                   void handleUnlockPaper();
                 }}
@@ -409,7 +425,7 @@ export default function KYCStatusScreen() {
           {paperStatus?.hasDemoAccount && (
             <Card style={{ marginBottom: 16, backgroundColor: theme.colors.success + '15' }}>
               <Text style={{ color: theme.colors.success, fontSize: 14, fontWeight: '600' }}>
-                Demo account is active. You can now paper trade with live market data.
+                Paper account is active. You can now paper trade with live market data.
               </Text>
             </Card>
           )}
@@ -428,85 +444,53 @@ export default function KYCStatusScreen() {
             {/* Document Verification */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ marginRight: 8 }}>📄</Text>
+                <Ionicons name="document-text-outline" size={20} color={theme.colors.accent.primary} style={{ marginRight: 8 }} />
                 <Text style={{ color: theme.colors.text.secondary }}>Document Verification</Text>
               </View>
-              <Text style={{ 
-                color: sessionStatus?.verificationDetails?.documentVerified 
-                  ? theme.colors.success 
-                  : isVerificationPending(currentStatus) 
-                    ? theme.colors.warning 
-                    : theme.colors.error 
-              }}>
-                {sessionStatus?.verificationDetails?.documentVerified 
-                  ? '✓' 
-                  : isVerificationPending(currentStatus) 
-                    ? '⏳' 
-                    : '✗'}
-              </Text>
+              {sessionStatus?.verificationDetails?.documentVerified
+                ? <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
+                : isVerificationPending(currentStatus)
+                  ? <Ionicons name="time-outline" size={18} color={theme.colors.warning} />
+                  : <Ionicons name="close-circle" size={18} color={theme.colors.error} />}
             </View>
 
             {/* Liveness Check */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ marginRight: 8 }}>🤳</Text>
+                <Ionicons name="camera-outline" size={20} color={theme.colors.accent.primary} style={{ marginRight: 8 }} />
                 <Text style={{ color: theme.colors.text.secondary }}>Liveness Detection</Text>
               </View>
-              <Text style={{ 
-                color: sessionStatus?.verificationDetails?.livenessVerified 
-                  ? theme.colors.success 
-                  : isVerificationPending(currentStatus) 
-                    ? theme.colors.warning 
-                    : theme.colors.error 
-              }}>
-                {sessionStatus?.verificationDetails?.livenessVerified 
-                  ? '✓' 
-                  : isVerificationPending(currentStatus) 
-                    ? '⏳' 
-                    : '✗'}
-              </Text>
+              {sessionStatus?.verificationDetails?.livenessVerified
+                ? <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
+                : isVerificationPending(currentStatus)
+                  ? <Ionicons name="time-outline" size={18} color={theme.colors.warning} />
+                  : <Ionicons name="close-circle" size={18} color={theme.colors.error} />}
             </View>
 
             {/* Face Match */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ marginRight: 8 }}>👤</Text>
+                <Ionicons name="person-outline" size={20} color={theme.colors.accent.primary} style={{ marginRight: 8 }} />
                 <Text style={{ color: theme.colors.text.secondary }}>Face Match</Text>
               </View>
-              <Text style={{ 
-                color: sessionStatus?.verificationDetails?.faceMatchVerified 
-                  ? theme.colors.success 
-                  : isVerificationPending(currentStatus) 
-                    ? theme.colors.warning 
-                    : theme.colors.error 
-              }}>
-                {sessionStatus?.verificationDetails?.faceMatchVerified 
-                  ? '✓' 
-                  : isVerificationPending(currentStatus) 
-                    ? '⏳' 
-                    : '✗'}
-              </Text>
+              {sessionStatus?.verificationDetails?.faceMatchVerified
+                ? <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
+                : isVerificationPending(currentStatus)
+                  ? <Ionicons name="time-outline" size={18} color={theme.colors.warning} />
+                  : <Ionicons name="close-circle" size={18} color={theme.colors.error} />}
             </View>
 
             {/* IP Analysis */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ marginRight: 8 }}>🌐</Text>
+                <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.accent.primary} style={{ marginRight: 8 }} />
                 <Text style={{ color: theme.colors.text.secondary }}>Security Check</Text>
               </View>
-              <Text style={{ 
-                color: sessionStatus?.verificationDetails?.ipAnalysisPassed 
-                  ? theme.colors.success 
-                  : isVerificationPending(currentStatus) 
-                    ? theme.colors.warning 
-                    : theme.colors.error 
-              }}>
-                {sessionStatus?.verificationDetails?.ipAnalysisPassed 
-                  ? '✓' 
-                  : isVerificationPending(currentStatus) 
-                    ? '⏳' 
-                    : '✗'}
-              </Text>
+              {sessionStatus?.verificationDetails?.ipAnalysisPassed
+                ? <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
+                : isVerificationPending(currentStatus)
+                  ? <Ionicons name="time-outline" size={18} color={theme.colors.warning} />
+                  : <Ionicons name="close-circle" size={18} color={theme.colors.error} />}
             </View>
           </Card>
 
@@ -622,21 +606,29 @@ export default function KYCStatusScreen() {
           )}
 
           {currentStatus === 'approved' && adminApproval === 'pending_approval' && (
-            <View style={{
-              backgroundColor: '#F59E0B10',
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: '#F59E0B30',
-            }}>
-              <Text style={{ color: '#F59E0B', fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
-                What happens next?
-              </Text>
-              <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
-                The ReTrading team will review your verification. This usually takes a few hours. You'll be notified once your account is approved.
-              </Text>
-            </View>
+            <>
+              <Button 
+                title="Start Paper Trading" 
+                onPress={() => router.replace('/(drawer)' as any)} 
+                fullWidth 
+                style={{ marginBottom: 16 }} 
+              />
+              <View style={{
+                backgroundColor: '#0EA5E910',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: '#0EA5E930',
+              }}>
+                <Text style={{ color: '#38BDF8', fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
+                  What happens next?
+                </Text>
+                <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
+                  The ReTrading team will review your verification. Once approved, you will be able to trade for real. In the meantime, paper trading with $100,000 virtual cash is available now.
+                </Text>
+              </View>
+            </>
           )}
 
           {/* Help link */}

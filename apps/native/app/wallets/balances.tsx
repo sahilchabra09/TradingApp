@@ -107,7 +107,7 @@ export default function WalletBalancesScreen() {
 						</Text>
 					)}
 					<Text style={{ color: theme.colors.success, fontSize: 14, fontWeight: '600', marginTop: 4 }}>
-						Live demo balance
+						Live paper balance
 					</Text>
 				</View>
 

@@ -49,7 +49,11 @@ function toApiDecimal(value: Decimal.Value) {
 }
 
 function isKycApproved(status: string) {
-	return status === 'approved';
+	// Allow demo/paper trading for:
+	//   'approved' — admin has fully approved the account
+	//   'pending'  — Didit has verified identity; awaiting admin review
+	// Real/live trading would require 'approved', but paper trading is available immediately after KYC.
+	return status === 'approved' || status === 'pending';
 }
 
 function normalizeSymbolInput(raw: string) {
@@ -597,139 +601,135 @@ paperTradingRoutes.post(
 			const grossAmount = executionPrice.mul(quantity);
 			const timestamp = new Date();
 
-			const tradeResult = await db.transaction(async (tx) => {
-				const wallet = await tx.query.paperWallets.findFirst({
-					where: (wallet, { eq }) => eq(wallet.userId, user.id),
-				});
-				if (!wallet) {
-					throw new ForbiddenError('Activate your paper trading account before placing a trade');
-				}
+			// neon-http driver does not support db.transaction() — use sequential awaits instead
+			const wallet = await db.query.paperWallets.findFirst({
+				where: (wallet, { eq }) => eq(wallet.userId, user.id),
+			});
+			if (!wallet) {
+				throw new ForbiddenError('Activate your paper trading account before placing a trade');
+			}
 
-				const currentBalance = new Decimal(wallet.balance);
-				if (normalizedPayload.side === 'buy' && currentBalance.lessThan(grossAmount)) {
-					await tx.insert(paperTradeAttempts).values({
+			const currentBalance = new Decimal(wallet.balance);
+			if (normalizedPayload.side === 'buy' && currentBalance.lessThan(grossAmount)) {
+				await db.insert(paperTradeAttempts).values({
+					userId: user.id,
+					symbol: normalizedPayload.symbol,
+					side: normalizedPayload.side,
+					quantity: toDbDecimal(quantity),
+					reason: 'insufficient_balance',
+					details: `Required ${toApiDecimal(grossAmount)} but only ${toApiDecimal(currentBalance)} is available`,
+				});
+				throw new InsufficientBalanceError(
+					toApiDecimal(grossAmount),
+					toApiDecimal(currentBalance),
+					'Insufficient paper trading cash to execute this order'
+				);
+			}
+
+			const instrumentId = await upsertInstrument(db, quote);
+			const existingHolding = await db.query.paperHoldings.findFirst({
+				where: (holding, { eq, and }) =>
+					and(eq(holding.userId, user.id), eq(holding.symbol, normalizedPayload.symbol)),
+			});
+
+			if (normalizedPayload.side === 'sell') {
+				if (!existingHolding) {
+					await db.insert(paperTradeAttempts).values({
 						userId: user.id,
 						symbol: normalizedPayload.symbol,
 						side: normalizedPayload.side,
 						quantity: toDbDecimal(quantity),
-						reason: 'insufficient_balance',
-						details: `Required ${toApiDecimal(grossAmount)} but only ${toApiDecimal(currentBalance)} is available`,
+						reason: 'insufficient_quantity',
+						details: 'No existing holding to sell.',
 					});
-					throw new InsufficientBalanceError(
-						toApiDecimal(grossAmount),
-						toApiDecimal(currentBalance),
-						'Insufficient paper trading cash to execute this order'
+					throw new ValidationError(`No paper trading position found for ${normalizedPayload.symbol}`);
+				}
+
+				const existingQuantity = new Decimal(existingHolding.quantity);
+				if (existingQuantity.lessThan(quantity)) {
+					await db.insert(paperTradeAttempts).values({
+						userId: user.id,
+						symbol: normalizedPayload.symbol,
+						side: normalizedPayload.side,
+						quantity: toDbDecimal(quantity),
+						reason: 'insufficient_quantity',
+						details: `Requested ${toApiDecimal(quantity)} but only ${toApiDecimal(existingQuantity)} is available.`,
+					});
+					throw new ValidationError(
+						`Insufficient quantity to sell ${normalizedPayload.symbol}`,
+						{
+							availableQuantity: toApiDecimal(existingQuantity),
+							requestedQuantity: normalizedPayload.quantity,
+						}
 					);
 				}
+			}
 
-				const instrumentId = await upsertInstrument(tx, quote);
-				const existingHolding = await tx.query.paperHoldings.findFirst({
-					where: (holding, { eq, and }) =>
-						and(eq(holding.userId, user.id), eq(holding.symbol, normalizedPayload.symbol)),
-				});
+			const nextBalance =
+				normalizedPayload.side === 'buy'
+					? currentBalance.minus(grossAmount)
+					: currentBalance.plus(grossAmount);
 
-				if (normalizedPayload.side === 'sell') {
-					if (!existingHolding) {
-						await tx.insert(paperTradeAttempts).values({
-							userId: user.id,
-							symbol: normalizedPayload.symbol,
-							side: normalizedPayload.side,
-							quantity: toDbDecimal(quantity),
-							reason: 'insufficient_quantity',
-							details: 'No existing holding to sell.',
-						});
-						throw new ValidationError(`No paper trading position found for ${normalizedPayload.symbol}`);
-					}
+			await db
+				.update(paperWallets)
+				.set({
+					balance: toDbDecimal(nextBalance),
+					updatedAt: timestamp,
+				})
+				.where(eq(paperWallets.userId, user.id));
 
-					const existingQuantity = new Decimal(existingHolding.quantity);
-					if (existingQuantity.lessThan(quantity)) {
-						await tx.insert(paperTradeAttempts).values({
-							userId: user.id,
-							symbol: normalizedPayload.symbol,
-							side: normalizedPayload.side,
-							quantity: toDbDecimal(quantity),
-							reason: 'insufficient_quantity',
-							details: `Requested ${toApiDecimal(quantity)} but only ${toApiDecimal(existingQuantity)} is available.`,
-						});
-						throw new ValidationError(
-							`Insufficient quantity to sell ${normalizedPayload.symbol}`,
-							{
-								availableQuantity: toApiDecimal(existingQuantity),
-								requestedQuantity: normalizedPayload.quantity,
-							}
-						);
-					}
-				}
-
-				const nextBalance =
-					normalizedPayload.side === 'buy'
-						? currentBalance.minus(grossAmount)
-						: currentBalance.plus(grossAmount);
-
-				await tx
-					.update(paperWallets)
-					.set({
-						balance: toDbDecimal(nextBalance),
-						updatedAt: timestamp,
-					})
-					.where(eq(paperWallets.userId, user.id));
-
-				if (normalizedPayload.side === 'buy') {
-					if (!existingHolding) {
-						await tx.insert(paperHoldings).values({
-							userId: user.id,
-							symbol: normalizedPayload.symbol,
-							instrumentId,
-							quantity: toDbDecimal(quantity),
-							avgPrice: toDbDecimal(executionPrice),
-						});
-					} else {
-						const currentQuantity = new Decimal(existingHolding.quantity);
-						const currentCost = currentQuantity.mul(existingHolding.avgPrice);
-						const newQuantity = currentQuantity.plus(quantity);
-						const newAvgPrice = currentCost.plus(grossAmount).div(newQuantity);
-
-						await tx
-							.update(paperHoldings)
-							.set({
-								instrumentId,
-								quantity: toDbDecimal(newQuantity),
-								avgPrice: toDbDecimal(newAvgPrice),
-							})
-							.where(eq(paperHoldings.id, existingHolding.id));
-					}
-				} else if (existingHolding) {
-					const remainingQuantity = new Decimal(existingHolding.quantity).minus(quantity);
-					if (remainingQuantity.lte(0)) {
-						await tx.delete(paperHoldings).where(eq(paperHoldings.id, existingHolding.id));
-					} else {
-						await tx
-							.update(paperHoldings)
-							.set({
-								quantity: toDbDecimal(remainingQuantity),
-							})
-							.where(eq(paperHoldings.id, existingHolding.id));
-					}
-				}
-
-				const [trade] = await tx
-					.insert(paperTrades)
-					.values({
+			if (normalizedPayload.side === 'buy') {
+				if (!existingHolding) {
+					await db.insert(paperHoldings).values({
 						userId: user.id,
 						symbol: normalizedPayload.symbol,
 						instrumentId,
-						side: normalizedPayload.side,
 						quantity: toDbDecimal(quantity),
-						price: toDbDecimal(executionPrice),
-						timestamp,
-					})
-					.returning();
+						avgPrice: toDbDecimal(executionPrice),
+					});
+				} else {
+					const currentQuantity = new Decimal(existingHolding.quantity);
+					const currentCost = currentQuantity.mul(existingHolding.avgPrice);
+					const newQuantity = currentQuantity.plus(quantity);
+					const newAvgPrice = currentCost.plus(grossAmount).div(newQuantity);
 
-				return {
-					trade,
-					nextBalance,
-				};
-			});
+					await db
+						.update(paperHoldings)
+						.set({
+							instrumentId,
+							quantity: toDbDecimal(newQuantity),
+							avgPrice: toDbDecimal(newAvgPrice),
+						})
+						.where(eq(paperHoldings.id, existingHolding.id));
+				}
+			} else if (existingHolding) {
+				const remainingQuantity = new Decimal(existingHolding.quantity).minus(quantity);
+				if (remainingQuantity.lte(0)) {
+					await db.delete(paperHoldings).where(eq(paperHoldings.id, existingHolding.id));
+				} else {
+					await db
+						.update(paperHoldings)
+						.set({
+							quantity: toDbDecimal(remainingQuantity),
+						})
+						.where(eq(paperHoldings.id, existingHolding.id));
+				}
+			}
+
+			const [trade] = await db
+				.insert(paperTrades)
+				.values({
+					userId: user.id,
+					symbol: normalizedPayload.symbol,
+					instrumentId,
+					side: normalizedPayload.side,
+					quantity: toDbDecimal(quantity),
+					price: toDbDecimal(executionPrice),
+					timestamp,
+				})
+				.returning();
+
+			const tradeResult = { trade, nextBalance };
 
 			return ResponseHelper.created(c, {
 				tradeId: tradeResult.trade.id,

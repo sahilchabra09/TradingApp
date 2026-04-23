@@ -53,6 +53,7 @@
     "@babel/plugin-transform-react-jsx": "^7.28.6",
     "@types/react": "~19.1.10",
     "babel-preset-expo": "^54.0.10",
+    "baseline-browser-mapping": "^2.10.21",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2"
   },

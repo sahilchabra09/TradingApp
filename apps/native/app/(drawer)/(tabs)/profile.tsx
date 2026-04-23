@@ -97,7 +97,7 @@ export default function ProfileScreen() {
       case 'not_started': return null;
       case 'pending':
         return kycSummary.adminApprovalStatus === 'pending_approval'
-          ? 'Pending admin approval'
+          ? 'Pending approval for Retrading'
           : 'In progress';
       case 'approved': return 'Approved';
       case 'rejected': return 'Rejected — retry';
