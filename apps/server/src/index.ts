@@ -6,7 +6,6 @@
  * FSC Mauritius Compliance: Complete regulatory compliance built-in
  */
 
-import "dotenv/config";
 import { Hono } from "hono";
 import { websocket } from 'hono/bun';
 import { cors } from 'hono/cors';
