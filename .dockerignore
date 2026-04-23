@@ -1,0 +1,40 @@
+# ── Git ──────────────────────────────────────────────────────
+.git
+.github
+.gitignore
+
+# ── Turbo cache ──────────────────────────────────────────────
+.turbo
+apps/*/.turbo
+
+# ── Node / Bun modules ───────────────────────────────────────
+# Reinstalled inside Docker via `bun install --frozen-lockfile`
+node_modules
+apps/*/node_modules
+packages/*/node_modules
+
+# ── Build outputs ────────────────────────────────────────────
+dist
+apps/server/dist
+.next
+apps/web/.next
+apps/server/tsconfig.tsbuildinfo
+
+# ── Expo / React Native (not deployed to a server) ───────────
+apps/native
+.expo
+
+# ── Secrets — NEVER ship these into an image ─────────────────
+.env
+.env.*
+!.env.example
+
+# ── Documentation ────────────────────────────────────────────
+*.md
+docs
+
+# ── Editor / OS artefacts ────────────────────────────────────
+.DS_Store
+*.log
+.idea
+.vscode
