@@ -21,7 +21,10 @@ apps/web/.next
 apps/server/tsconfig.tsbuildinfo
 
 # ── Expo / React Native (not deployed to a server) ───────────
+# Exclude native source but keep package.json so bun can resolve
+# the full workspace graph when running --frozen-lockfile
 apps/native
+!apps/native/package.json
 .expo
 
 # ── Secrets — NEVER ship these into an image ─────────────────

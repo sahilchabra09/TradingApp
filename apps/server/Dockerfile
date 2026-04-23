@@ -18,6 +18,8 @@ WORKDIR /app
 # own node_modules instead of hoisting everything to the root.
 COPY package.json bun.lock bunfig.toml ./
 COPY apps/server/package.json ./apps/server/package.json
+COPY apps/web/package.json    ./apps/web/package.json
+COPY apps/native/package.json ./apps/native/package.json
 
 RUN bun install --frozen-lockfile
 
