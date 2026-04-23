@@ -4,6 +4,9 @@
 # Build context : monorepo root  (run from TradingApp/)
 # Build command : docker build -f apps/server/Dockerfile -t trading-server .
 # Run          : docker run --env-file apps/server/.env -p 3004:3004 trading-server
+#
+# No compile step — Bun runs TypeScript natively, which avoids
+# bundler issues with runtime-specific subpath exports (hono/bun).
 # ============================================================
 
 FROM oven/bun:1.3.3-alpine AS base
@@ -23,33 +26,18 @@ COPY apps/native/package.json ./apps/native/package.json
 
 RUN bun install --frozen-lockfile
 
-# ── Stage 2: Build (tsdown compiles TS → JS) ────────────────
-FROM base AS builder
+# ── Stage 2: Production runner ──────────────────────────────
+FROM base AS runner
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Reuse installed modules from the deps stage
+# Copy installed modules from the deps stage
 COPY --from=deps /app/node_modules             ./node_modules
 COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
 
-# Copy the server source
+# Copy server source and workspace config
 COPY apps/server/ ./apps/server/
 COPY package.json bunfig.toml ./
-
-WORKDIR /app/apps/server
-
-ENV NODE_ENV=production
-
-# tsdown transpiles src/ → dist/
-# Start script: bun dist/index.js
-RUN bun run build
-
-# ── Stage 3: Production runner ──────────────────────────────
-FROM base AS runner
-WORKDIR /app
-
-# Copy compiled output and production dependencies
-COPY --from=builder /app/apps/server/dist        ./dist
-COPY --from=builder /app/apps/server/node_modules ./node_modules
 
 # ── WebSocket note ────────────────────────────────────────────
 # Client-facing WS endpoint: ws://<host>:3004/api/paper-trading/stream
@@ -103,4 +91,5 @@ EXPOSE 3004
 RUN addgroup -S app && adduser -S -G app app
 USER app
 
-CMD ["bun", "dist/index.js"]
+# Bun runs TypeScript natively — no compile step needed.
+CMD ["bun", "apps/server/src/index.ts"]
