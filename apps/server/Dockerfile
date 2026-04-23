@@ -29,15 +29,16 @@ RUN bun install --frozen-lockfile
 # ── Stage 2: Production runner ──────────────────────────────
 FROM base AS runner
 RUN apk add --no-cache libc6-compat
-WORKDIR /app
 
-# Copy installed modules from the deps stage
-COPY --from=deps /app/node_modules             ./node_modules
-COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
+# Work directly inside the server package — Bun resolves modules
+# from ./node_modules here, no root node_modules needed.
+WORKDIR /app/apps/server
 
-# Copy server source and workspace config
-COPY apps/server/ ./apps/server/
-COPY package.json bunfig.toml ./
+# Only copy server's own node_modules (not the full monorepo root)
+COPY --from=deps /app/apps/server/node_modules ./node_modules
+
+# Copy server source
+COPY apps/server/ ./
 
 # ── WebSocket note ────────────────────────────────────────────
 # Client-facing WS endpoint: ws://<host>:3004/api/paper-trading/stream
@@ -92,4 +93,4 @@ RUN addgroup -S app && adduser -S -G app app
 USER app
 
 # Bun runs TypeScript natively — no compile step needed.
-CMD ["bun", "apps/server/src/index.ts"]
+CMD ["bun", "src/index.ts"]
