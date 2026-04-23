@@ -109,7 +109,8 @@ export default function HomeScreen() {
 	);
 
 	const totals = useMemo(() => {
-		const totalValue = toNumber(state.portfolio?.totalValue);
+		// Use holdingsValue (market value of open positions only) — wallet cash is excluded
+		const totalValue = toNumber(state.portfolio?.holdingsValue);
 		const totalPnl = toNumber(state.portfolio?.totalPnl);
 		const totalPnlPercent = toNumber(state.holdings?.totals?.totalPnlPercent);
 		return {
@@ -117,7 +118,7 @@ export default function HomeScreen() {
 			totalPnl,
 			totalPnlPercent,
 		};
-	}, [state.holdings?.totals?.totalPnlPercent, state.portfolio?.totalPnl, state.portfolio?.totalValue]);
+	}, [state.holdings?.totals?.totalPnlPercent, state.portfolio?.totalPnl, state.portfolio?.holdingsValue]);
 
 	const accountBadge = useMemo(() => {
 		if (!state.status) return null;

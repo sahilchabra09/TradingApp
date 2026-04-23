@@ -252,12 +252,12 @@ export default function OrderFormScreen() {
 								</View>
 							</>
 						) : null}
-						<Pressable
-							style={{ backgroundColor: '#10B981', paddingVertical: 15, borderRadius: 14, alignItems: 'center' }}
-							onPress={() => setShowFillModal(false)}
-						>
-							<Text style={{ color: '#031108', fontSize: 16, fontWeight: '700' }}>Done</Text>
-						</Pressable>
+					<Pressable
+						style={{ backgroundColor: '#10B981', paddingVertical: 15, borderRadius: 14, alignItems: 'center' }}
+						onPress={() => { setShowFillModal(false); router.back(); }}
+					>
+						<Text style={{ color: '#031108', fontSize: 16, fontWeight: '700' }}>Done</Text>
+					</Pressable>
 					</View>
 				</View>
 			</Modal>

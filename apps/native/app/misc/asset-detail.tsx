@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -96,6 +97,11 @@ export default function AssetDetailScreen() {
 	}, [isSignedIn, symbol]);
 
 	useEffect(() => { void loadDetails(); }, [loadDetails]);
+
+	// Re-fetch holdings every time this screen comes into focus (e.g. after placing a trade)
+	useFocusEffect(
+		useCallback(() => { void loadDetails(); }, [loadDetails])
+	);
 
 	// ── Load chart bars ────────────────────────────────────────────────────────
 	const loadChart = useCallback(async (period: ChartPeriod) => {
