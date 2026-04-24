@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
-    "expo-linear-gradient": "^15.0.7"
+    "expo-linear-gradient": "^15.0.7",
+    "react-native-markdown-display": "^7.0.2"
   },
   "devDependencies": {
     "turbo": "^2.5.4"

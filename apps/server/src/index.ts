@@ -28,6 +28,7 @@ import kycRoutes from './routes/kyc';
 import adminRoutes from './routes/admin';
 import paperTradingRoutes from './routes/paperTrading';
 import newsRoutes from './routes/news';
+import aiResearchRoutes from './routes/ai-research';
 import { ensureNewsStream } from './services/news.service';
 
 type Bindings = {
@@ -56,6 +57,7 @@ app.use('/api/v1/users/*', clerkMiddleware());
 app.use('/api/v1/kyc/*', clerkMiddleware());
 app.use('/api/paper-trading/*', clerkMiddleware());
 app.use('/api/news/*', clerkMiddleware());
+app.use('/api/ai-research/*', clerkMiddleware());
 
 // ── Custom middleware ──────────────────────────────────────────────────────────
 app.use('*', rateLimiter);
@@ -91,6 +93,7 @@ app.route('/api/v1', apiV1);
 
 app.route('/api/paper-trading', paperTradingRoutes);
 app.route('/api/news', newsRoutes);
+app.route('/api/ai-research', aiResearchRoutes);
 
 // ── Warm up Alpaca news WebSocket ─────────────────────────────────────────────
 ensureNewsStream();

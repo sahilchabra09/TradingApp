@@ -59,4 +59,4 @@ EXPOSE 3004
 RUN addgroup -S app && adduser -S -G app app
 USER app
 
-CMD ["bun", "src/index.ts"]
+CMD ["bun", "src/index.ts"] 

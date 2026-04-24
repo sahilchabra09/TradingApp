@@ -21,3 +21,4 @@ export * from './alerts';
 export * from './compliance';
 export * from './payments';
 export * from './paper';
+export * from './ai-research';

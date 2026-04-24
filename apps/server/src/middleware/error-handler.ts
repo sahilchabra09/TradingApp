@@ -14,6 +14,7 @@ export const errorHandler = (err: Error, c: Context) => {
 		stack: err.stack,
 		path: c.req.path,
 		method: c.req.method,
+		details: (err as any).details,
 	});
 
 	// Handle AppError instances

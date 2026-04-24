@@ -164,8 +164,9 @@ export default function AssetDetailScreen() {
 	return (
 		<LinearGradient colors={['#000000', '#041d16', '#000000']} style={{ flex: 1 }}>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+				<View style={{ flex: 1 }}>
 				<ScrollView
-					contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+					contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
 					showsVerticalScrollIndicator={false}
 				>
 					{/* ── Back ─────────────────────────────────────────────────── */}
@@ -363,7 +364,39 @@ export default function AssetDetailScreen() {
 							</Text>
 						</View>
 					)}
+
 				</ScrollView>
+
+				{/* ── Floating AI Research FAB ──────────────────────────── */}
+				<TouchableOpacity
+					activeOpacity={0.9}
+					onPress={() =>
+						router.push({
+							pathname: '/misc/ai-research',
+							params: { symbol },
+						})
+					}
+					style={{
+						position: 'absolute',
+						bottom: 28,
+						right: 20,
+						width: 56,
+						height: 56,
+						borderRadius: 28,
+						backgroundColor: '#7C3AED',
+						alignItems: 'center',
+						justifyContent: 'center',
+						shadowColor: '#7C3AED',
+						shadowOffset: { width: 0, height: 4 },
+						shadowOpacity: 0.5,
+						shadowRadius: 12,
+						elevation: 8,
+					}}
+				>
+					<Ionicons name="sparkles" size={24} color="#FFFFFF" />
+				</TouchableOpacity>
+
+				</View>
 			</SafeAreaView>
 		</LinearGradient>
 	);
