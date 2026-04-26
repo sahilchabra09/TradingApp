@@ -25,7 +25,7 @@ import {
 	type PaperTradeResult,
 } from '@/lib/paper-api';
 import { formatCurrency, formatRelativeTime } from '@/lib/formatters';
-import { usePaperMarketStream, useStableToken } from '@/lib/hooks';
+import { usePaperMarketStream, useStableToken, useTheme } from '@/lib/hooks';
 
 const DEFAULT_SLIPPAGE_PCT = 0.1;
 const toNumber = (value: string | undefined | null) => Number(value || 0);
@@ -38,6 +38,7 @@ type OrderContext = {
 };
 
 export default function OrderFormScreen() {
+	const theme = useTheme();
 	const { symbol: prefilledSymbol } = useLocalSearchParams<{ symbol?: string }>();
 	const { getToken, isSignedIn } = useAuth();
 	const stableGetToken = useStableToken(getToken);
@@ -194,9 +195,9 @@ export default function OrderFormScreen() {
 
 	if (!isSignedIn) {
 		return (
-			<SafeAreaView className="flex-1 bg-[#050A05]">
-				<View className="flex-1 items-center justify-center px-6">
-					<Text className="text-center text-base text-[#A8D5B3]">
+			<SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+				<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+					<Text style={{ textAlign: 'center', fontSize: 16, color: theme.colors.text.secondary }}>
 						Sign in to place paper trades.
 					</Text>
 				</View>
@@ -207,7 +208,7 @@ export default function OrderFormScreen() {
 	const isLocked = data.status !== null && !canTrade;
 
 	return (
-		<SafeAreaView className="flex-1 bg-[#050A05]">
+		<SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
 			{/* Order filled modal */}
 			<Modal
 				visible={showFillModal}
@@ -217,35 +218,35 @@ export default function OrderFormScreen() {
 			>
 				<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.75)' }}>
 					<View style={{
-						backgroundColor: '#0D1F15',
+						backgroundColor: theme.colors.background.secondary,
 						borderRadius: 24,
 						padding: 28,
 						marginHorizontal: 24,
 						borderWidth: 1,
-						borderColor: 'rgba(16,185,129,0.25)',
+						borderColor: theme.colors.border.accent,
 						width: '85%',
 					}}>
-						<View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(16,185,129,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-							<Ionicons name="checkmark-circle" size={30} color="#10B981" />
+						<View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: theme.colors.success + '26', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+							<Ionicons name="checkmark-circle" size={30} color={theme.colors.success} />
 						</View>
-						<Text style={{ color: '#E6F8EA', fontSize: 22, fontWeight: 'bold', marginBottom: 6 }}>
+						<Text style={{ color: theme.colors.text.primary, fontSize: 22, fontWeight: 'bold', marginBottom: 6 }}>
 							Order filled
 						</Text>
 						{tradeResult ? (
 							<>
-								<Text style={{ color: '#A8D5B3', fontSize: 15, marginBottom: 24 }}>
+								<Text style={{ color: theme.colors.text.secondary, fontSize: 15, marginBottom: 24 }}>
 									{tradeResult.side.toUpperCase()} {tradeResult.quantity} {tradeResult.symbol}
 								</Text>
 								<View style={{ gap: 12, marginBottom: 28 }}>
 									<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-										<Text style={{ color: '#6B9175', fontSize: 14 }}>Execution price</Text>
-										<Text style={{ color: '#E6F8EA', fontSize: 14, fontWeight: '600' }}>
+										<Text style={{ color: theme.colors.text.tertiary, fontSize: 14 }}>Execution price</Text>
+										<Text style={{ color: theme.colors.text.primary, fontSize: 14, fontWeight: '600' }}>
 											{formatCurrency(toNumber(tradeResult.executionPrice))}
 										</Text>
 									</View>
 									<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-										<Text style={{ color: '#6B9175', fontSize: 14 }}>Cash remaining</Text>
-										<Text style={{ color: '#E6F8EA', fontSize: 14, fontWeight: '600' }}>
+										<Text style={{ color: theme.colors.text.tertiary, fontSize: 14 }}>Cash remaining</Text>
+										<Text style={{ color: theme.colors.text.primary, fontSize: 14, fontWeight: '600' }}>
 											{formatCurrency(toNumber(tradeResult.cashBalance))}
 										</Text>
 									</View>
@@ -253,28 +254,27 @@ export default function OrderFormScreen() {
 							</>
 						) : null}
 					<Pressable
-						style={{ backgroundColor: '#10B981', paddingVertical: 15, borderRadius: 14, alignItems: 'center' }}
+						style={{ backgroundColor: theme.colors.accent.primary, paddingVertical: 15, borderRadius: 14, alignItems: 'center' }}
 						onPress={() => { setShowFillModal(false); router.back(); }}
 					>
-						<Text style={{ color: '#031108', fontSize: 16, fontWeight: '700' }}>Done</Text>
+						<Text style={{ color: theme.colors.text.inverse, fontSize: 16, fontWeight: '700' }}>Done</Text>
 					</Pressable>
 					</View>
 				</View>
 			</Modal>
 
-			<ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 48 }}>
+			<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
 				{/* Top badge row */}
 				<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
-					<View style={{ backgroundColor: 'rgba(96,165,250,0.12)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(96,165,250,0.25)' }}>
-						<Text style={{ color: '#60A5FA', fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>
+					<View style={{ backgroundColor: theme.colors.info + '1F', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.info + '40' }}>
+						<Text style={{ color: theme.colors.info, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>
 							PAPER TRADING
 						</Text>
 					</View>
 
-
 					{isLoadingQuote || isLoadingContext ? (
 						<View style={{ marginLeft: 'auto' }}>
-							<Spinner color="#10B981" size="small" />
+							<Spinner size="small" />
 						</View>
 					) : null}
 				</View>
@@ -283,24 +283,24 @@ export default function OrderFormScreen() {
 				<View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 }}>
 					<View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 						<View style={{ flex: 1, paddingRight: 12 }}>
-							<Text style={{ color: '#FFFFFF', fontSize: 40, fontWeight: 'bold', letterSpacing: -1 }}>
+							<Text style={{ color: theme.colors.text.primary, fontSize: 40, fontWeight: 'bold', letterSpacing: -1 }}>
 								{normalizedSymbol}
 							</Text>
 							{data.quote?.instrumentName ? (
-								<Text style={{ color: '#6B9175', fontSize: 13, marginTop: 4 }} numberOfLines={1}>
+								<Text style={{ color: theme.colors.text.tertiary, fontSize: 13, marginTop: 4 }} numberOfLines={1}>
 									{data.quote.instrumentName}
 								</Text>
 							) : null}
 						</View>
 						<View style={{ alignItems: 'flex-end', paddingTop: 6 }}>
-							<Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: 'bold' }}>
+							<Text style={{ color: theme.colors.text.primary, fontSize: 28, fontWeight: 'bold' }}>
 								{quotePrice ? formatCurrency(quotePrice) : '--'}
 							</Text>
 							{data.quote?.exchange ? (
-								<Text style={{ color: '#6B9175', fontSize: 12, marginTop: 4 }}>{data.quote.exchange}</Text>
+								<Text style={{ color: theme.colors.text.tertiary, fontSize: 12, marginTop: 4 }}>{data.quote.exchange}</Text>
 							) : null}
 							{lastUpdatedAt ? (
-								<Text style={{ color: '#3a5a45', fontSize: 11, marginTop: 2 }}>
+								<Text style={{ color: theme.colors.text.disabled, fontSize: 11, marginTop: 2 }}>
 									{connectionState} · {formatRelativeTime(lastUpdatedAt)}
 								</Text>
 							) : null}
@@ -311,11 +311,11 @@ export default function OrderFormScreen() {
 				{/* Available cash pill */}
 				{data.account ? (
 					<View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-						<View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
-							<Ionicons name="wallet-outline" size={14} color="#6B9175" />
-							<Text style={{ color: '#9CA3AF', fontSize: 13 }}>
+						<View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.surface.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, alignSelf: 'flex-start', borderWidth: 1, borderColor: theme.colors.border.primary }}>
+							<Ionicons name="wallet-outline" size={14} color={theme.colors.text.tertiary} />
+							<Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
 								Available:{' '}
-								<Text style={{ color: '#E6F8EA', fontWeight: '600' }}>
+								<Text style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
 									{formatCurrency(availableCash)}
 								</Text>
 							</Text>
@@ -323,31 +323,45 @@ export default function OrderFormScreen() {
 					</View>
 				) : null}
 
-				<View className="px-4">
+				<View style={{ paddingHorizontal: 16 }}>
 					{/* Lock / activate banner */}
 					{isLocked ? (
-						<View className="mb-5 rounded-[24px] border border-amber-300/30 bg-amber-500/10 px-4 py-4">
-							<Text className="text-sm font-semibold text-amber-200">Trading is currently locked</Text>
-							<Text className="mt-2 text-xs leading-5 text-amber-100">
+						<View style={{
+							marginBottom: 20, borderRadius: 24, borderWidth: 1,
+							borderColor: theme.colors.warning + '4D',
+							backgroundColor: theme.colors.warning + '1A',
+							paddingHorizontal: 16, paddingVertical: 16,
+						}}>
+							<Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.warning }}>Trading is currently locked</Text>
+							<Text style={{ marginTop: 8, fontSize: 12, lineHeight: 20, color: theme.colors.warning }}>
 								Complete KYC verification and activate your paper account to start trading.
 							</Text>
-							<View className="mt-4 flex-row gap-x-2">
+							<View style={{ marginTop: 16, flexDirection: 'row', gap: 8 }}>
 								<Pressable
-									className="rounded-full border border-white/20 bg-white/5 px-4 py-2"
+									style={{
+										borderRadius: 999, borderWidth: 1,
+										borderColor: theme.colors.border.secondary,
+										backgroundColor: theme.colors.surface.primary,
+										paddingHorizontal: 16, paddingVertical: 8,
+									}}
 									onPress={() => router.push('/kyc/start')}
 								>
-									<Text className="text-xs font-semibold text-[#E6F8EA]">Complete KYC</Text>
+									<Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.text.primary }}>Complete KYC</Text>
 								</Pressable>
 								{data.status?.canActivateDemo ? (
 									<Pressable
-										className="rounded-full bg-[#00D35A] px-4 py-2"
+										style={{
+											borderRadius: 999,
+											backgroundColor: theme.colors.accent.primary,
+											paddingHorizontal: 16, paddingVertical: 8,
+										}}
 										onPress={() => void handleActivateDemo()}
 										disabled={isActivatingDemo}
 									>
 										{isActivatingDemo ? (
-											<Spinner color="#031108" size="small" />
+											<Spinner size="small" />
 										) : (
-											<Text className="text-xs font-semibold text-[#031108]">Activate Paper Account</Text>
+											<Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.text.inverse }}>Activate Paper Account</Text>
 										)}
 									</Pressable>
 								) : null}
@@ -356,27 +370,25 @@ export default function OrderFormScreen() {
 					) : null}
 
 					{/* Buy / Sell toggle */}
-					<View className="mb-5 flex-row rounded-full bg-white/5 p-1">
+					<View style={{ marginBottom: 20, flexDirection: 'row', borderRadius: 999, backgroundColor: theme.colors.surface.primary, padding: 4 }}>
 						{(['buy', 'sell'] as const).map((value) => {
 							const active = value === side;
 							return (
 								<Pressable
 									key={value}
-									className={
-										active
-											? value === 'buy'
-												? 'flex-1 rounded-full bg-emerald-500 px-4 py-3'
-												: 'flex-1 rounded-full bg-rose-500 px-4 py-3'
-											: 'flex-1 rounded-full px-4 py-3'
-									}
+									style={{
+										flex: 1, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 12,
+										backgroundColor: active
+											? value === 'buy' ? theme.colors.chart.bullish : theme.colors.chart.bearish
+											: 'transparent',
+									}}
 									onPress={() => setSide(value)}
 								>
 									<Text
-										className={
-											active
-												? 'text-center font-semibold text-white'
-												: 'text-center font-semibold text-[#A8D5B3]'
-										}
+										style={{
+											textAlign: 'center', fontWeight: '600',
+											color: active ? theme.colors.text.inverse : theme.colors.text.secondary,
+										}}
 									>
 										{value === 'buy' ? 'Buy' : 'Sell'}
 									</Text>
@@ -386,40 +398,51 @@ export default function OrderFormScreen() {
 					</View>
 
 					{/* Quantity input */}
-					<View className="mb-5">
-						<Text className="mb-3 text-xs uppercase tracking-[1.5px] text-[#6B9175]">Shares</Text>
+					<View style={{ marginBottom: 20 }}>
+						<Text style={{ marginBottom: 12, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', color: theme.colors.text.tertiary }}>Shares</Text>
 						<TextInput
-							className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-2xl font-semibold text-[#E6F8EA]"
+							style={{
+								borderRadius: 16, borderWidth: 1,
+								borderColor: theme.colors.border.primary,
+								backgroundColor: theme.colors.surface.primary,
+								paddingHorizontal: 20, paddingVertical: 16,
+								fontSize: 24, fontWeight: '600', color: theme.colors.text.primary,
+							}}
 							value={quantity}
 							onChangeText={setQuantity}
 							placeholder="0"
-							placeholderTextColor="#3a5a45"
+							placeholderTextColor={theme.colors.text.disabled}
 							keyboardType="decimal-pad"
 						/>
 					</View>
 
 					{/* Cost breakdown — only show when quantity is entered */}
 					{quotePrice && parsedQuantity > 0 ? (
-						<View className="mb-5 rounded-[20px] border border-white/8 bg-[#07140b] px-4 py-4">
-							<View className="gap-y-3">
-								<View className="flex-row items-center justify-between">
-									<Text className="text-sm text-[#6B9175]">Market price</Text>
-									<Text className="text-sm font-semibold text-[#E6F8EA]">
+						<View style={{
+							marginBottom: 20, borderRadius: 20, borderWidth: 1,
+							borderColor: theme.colors.border.primary,
+							backgroundColor: theme.colors.surface.primary,
+							paddingHorizontal: 16, paddingVertical: 16,
+						}}>
+							<View style={{ gap: 12 }}>
+								<View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+									<Text style={{ fontSize: 14, color: theme.colors.text.tertiary }}>Market price</Text>
+									<Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text.primary }}>
 										{formatCurrency(quotePrice)}
 									</Text>
 								</View>
-								<View className="flex-row items-center justify-between">
-									<Text className="text-sm text-[#6B9175]">Est. execution</Text>
-									<Text className="text-sm font-semibold text-[#E6F8EA]">
+								<View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+									<Text style={{ fontSize: 14, color: theme.colors.text.tertiary }}>Est. execution</Text>
+									<Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text.primary }}>
 										{formatCurrency(estimatedExecutionPrice)}
 									</Text>
 								</View>
-								<View className="h-px bg-white/8" />
-								<View className="flex-row items-center justify-between">
-									<Text className="text-sm font-semibold text-[#A8D5B3]">
+								<View style={{ height: 1, backgroundColor: theme.colors.border.primary }} />
+								<View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+									<Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text.secondary }}>
 										{side === 'buy' ? 'Total cost' : 'Est. proceeds'}
 									</Text>
-									<Text className="text-base font-bold text-[#E6F8EA]">
+									<Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text.primary }}>
 										{formatCurrency(estimatedTotal)}
 									</Text>
 								</View>
@@ -429,34 +452,39 @@ export default function OrderFormScreen() {
 
 					{/* Error */}
 					{submitError || data.quoteError ? (
-						<View className="mb-5 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3">
-							<Text className="text-sm text-rose-200">{submitError || data.quoteError}</Text>
+						<View style={{
+							marginBottom: 20, borderRadius: 16, borderWidth: 1,
+							borderColor: theme.colors.error + '33',
+							backgroundColor: theme.colors.error + '1A',
+							paddingHorizontal: 16, paddingVertical: 12,
+						}}>
+							<Text style={{ fontSize: 14, color: theme.colors.error }}>{submitError || data.quoteError}</Text>
 						</View>
 					) : null}
 
 					{/* Submit button */}
 					<Pressable
-						className={
-							isSubmitting || !canTrade
-								? 'items-center rounded-full bg-white/20 px-5 py-4'
+						style={{
+							alignItems: 'center', borderRadius: 999, paddingHorizontal: 20, paddingVertical: 16,
+							backgroundColor: isSubmitting || !canTrade
+								? theme.colors.surface.elevated
 								: side === 'buy'
-									? 'items-center rounded-full bg-[#00D35A] px-5 py-4'
-									: 'items-center rounded-full bg-rose-500 px-5 py-4'
-						}
+									? theme.colors.chart.bullish
+									: theme.colors.chart.bearish,
+						}}
 						onPress={() => void handleSubmit()}
 						disabled={isSubmitting || !canTrade}
 					>
 						{isSubmitting ? (
-							<Spinner color={side === 'buy' ? '#031108' : '#FFFFFF'} size="small" />
+							<Spinner size="small" />
 						) : (
 							<Text
-								className={
-									!canTrade
-										? 'text-base font-semibold text-[#E6F8EA]'
-										: side === 'buy'
-											? 'text-base font-semibold text-[#031108]'
-											: 'text-base font-semibold text-white'
-								}
+								style={{
+									fontSize: 16, fontWeight: '600',
+									color: !canTrade
+										? theme.colors.text.primary
+										: theme.colors.text.inverse,
+								}}
 							>
 								{canTrade
 									? side === 'buy'

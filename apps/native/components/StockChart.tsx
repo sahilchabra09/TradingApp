@@ -16,6 +16,7 @@ import Svg, {
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Spinner } from '@/components/Spinner';
+import { useTheme } from '@/lib/hooks';
 import type { ChartPeriod, HistoricalBar } from '@/lib/paper-api';
 
 // ─── Re-export ────────────────────────────────────────────────────────────────
@@ -53,9 +54,6 @@ const PERIODS: ChartPeriod[] = ['1D', '1W', '1M', '3M', '1Y'];
 const CHART_H           = 200;
 const V_PAD             = 16;
 const H_PAD             = 44;
-const COLOR_UP          = '#10B981';
-const COLOR_DOWN        = '#EF4444';
-const COLOR_GRID        = 'rgba(255,255,255,0.06)';
 const CURSOR_CLEAR_MS   = 2500;
 const TOOLTIP_W         = 120;
 
@@ -169,8 +167,13 @@ export function StockChart({
 	onPeriodChange,
 	width: propWidth,
 }: StockChartProps) {
+	const theme = useTheme();
 	const { width: windowW } = useWindowDimensions();
 	const chartW = propWidth ?? windowW - 40;
+
+	const COLOR_UP   = theme.colors.chart.bullish;
+	const COLOR_DOWN = theme.colors.chart.bearish;
+	const COLOR_GRID = theme.colors.chart.grid;
 
 	const gradIdRef = useRef(`cg-${Math.random().toString(36).slice(2, 7)}`);
 	const gradId    = gradIdRef.current;
@@ -275,14 +278,14 @@ export function StockChart({
 								borderRadius: 10,
 								backgroundColor: active
 									? lineColor + '22'
-									: 'rgba(255,255,255,0.04)',
+									: theme.colors.surface.primary,
 								borderWidth: 1,
-								borderColor: active ? lineColor : 'rgba(255,255,255,0.08)',
+								borderColor: active ? lineColor : theme.colors.border.primary,
 							}}
 						>
 							<Text
 								style={{
-									color: active ? lineColor : '#6B7280',
+									color: active ? lineColor : theme.colors.text.tertiary,
 									fontSize: 12,
 									fontWeight: active ? '700' : '500',
 									letterSpacing: 0.3,
@@ -302,12 +305,12 @@ export function StockChart({
 						height: CHART_H,
 						justifyContent: 'center',
 						alignItems: 'center',
-						backgroundColor: 'rgba(255,255,255,0.02)',
+						backgroundColor: theme.colors.surface.glass,
 						borderRadius: 12,
 					}}
 				>
-					<Spinner color={COLOR_UP} size="small" />
-					<Text style={{ color: '#4B5563', fontSize: 12, marginTop: 8 }}>
+					<Spinner size="small" />
+					<Text style={{ color: theme.colors.text.disabled, fontSize: 12, marginTop: 8 }}>
 						Loading chart data...
 					</Text>
 				</View>
@@ -317,11 +320,11 @@ export function StockChart({
 						height: CHART_H,
 						justifyContent: 'center',
 						alignItems: 'center',
-						backgroundColor: 'rgba(255,255,255,0.02)',
+						backgroundColor: theme.colors.surface.glass,
 						borderRadius: 12,
 					}}
 				>
-					<Text style={{ color: '#4B5563', fontSize: 13 }}>
+					<Text style={{ color: theme.colors.text.disabled, fontSize: 13 }}>
 						No chart data for this period
 					</Text>
 				</View>
@@ -334,7 +337,7 @@ export function StockChart({
 								height: CHART_H,
 								borderRadius: 12,
 								overflow: 'hidden',
-								backgroundColor: 'rgba(255,255,255,0.02)',
+								backgroundColor: theme.colors.surface.glass,
 							}}
 						>
 							{/* SVG chart ─────────────────────────────────── */}
@@ -364,7 +367,7 @@ export function StockChart({
 											y={y + 4}
 											textAnchor="end"
 											fontSize="10"
-											fill="#4B5563"
+											fill={theme.colors.text.disabled}
 											fontFamily="RobotoMono"
 										>
 											{formatAxisPrice(chartData.gridPrices[idx])}
@@ -395,7 +398,7 @@ export function StockChart({
 										bottom: 0,
 										width: 1,
 										left: 0,
-										backgroundColor: 'rgba(255,255,255,0.45)',
+										backgroundColor: theme.colors.text.primary + '73',
 									},
 									cursorLineStyle,
 								]}
@@ -413,7 +416,7 @@ export function StockChart({
 										borderRadius: 6,
 										backgroundColor: lineColor,
 										borderWidth: 2,
-										borderColor: '#000000',
+										borderColor: theme.colors.background.primary,
 									}}
 								/>
 							)}
@@ -426,17 +429,17 @@ export function StockChart({
 										top: 6,
 										left: tooltipLeft,
 										width: TOOLTIP_W,
-										backgroundColor: 'rgba(10,20,28,0.93)',
+										backgroundColor: theme.colors.background.tertiary + 'ED',
 										borderRadius: 8,
 										paddingHorizontal: 10,
 										paddingVertical: 7,
 										borderWidth: 1,
-										borderColor: 'rgba(255,255,255,0.13)',
+										borderColor: theme.colors.border.secondary,
 									}}
 								>
 									<Text
 										style={{
-											color: '#FFFFFF',
+											color: theme.colors.text.primary,
 											fontSize: 14,
 											fontWeight: '700',
 											letterSpacing: 0.2,
@@ -445,7 +448,7 @@ export function StockChart({
 										{formatAxisPrice(cursorInfo.price)}
 									</Text>
 									<Text
-										style={{ color: '#6B7280', fontSize: 10, marginTop: 2 }}
+										style={{ color: theme.colors.text.tertiary, fontSize: 10, marginTop: 2 }}
 									>
 										{formatCursorTime(cursorInfo.time, period)}
 									</Text>
@@ -470,8 +473,8 @@ export function StockChart({
 								paddingVertical: 4,
 								borderRadius: 8,
 								backgroundColor: chartData.isPositive
-									? 'rgba(16,185,129,0.12)'
-									: 'rgba(239,68,68,0.12)',
+									? COLOR_UP + '1F'
+									: COLOR_DOWN + '1F',
 							}}
 						>
 							<Text

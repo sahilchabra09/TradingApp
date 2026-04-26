@@ -246,44 +246,44 @@ export default function KYCStatusScreen() {
     if (currentStatus === 'approved' && adminApproval === 'pending_approval') {
       return {
         iconName: 'checkmark-circle' as const,
-        iconColor: '#10B981',
+        iconColor: theme.colors.success,
         title: 'Verification Complete',
         description: 'Your identity has been verified successfully. Your account is now pending approval from ReTrading.',
-        color: '#F59E0B',
+        color: theme.colors.warning,
       };
     }
     // Admin approved — user can trade
     if (currentStatus === 'approved' && adminApproval === 'approved') {
       return {
         iconName: 'trophy' as const,
-        iconColor: '#10B981',
+        iconColor: theme.colors.success,
         title: 'Account Approved',
         description: 'Your account has been approved by ReTrading. You can now start trading!',
-        color: '#10B981',
+        color: theme.colors.success,
       };
     }
     // Admin rejected
     if (adminApproval === 'rejected') {
       return {
         iconName: 'close-circle' as const,
-        iconColor: '#EF4444',
+        iconColor: theme.colors.error,
         title: 'Approval Declined',
         description: 'Your account was not approved by ReTrading. Please contact support for more information.',
-        color: '#EF4444',
+        color: theme.colors.error,
       };
     }
     // Default: map Didit status to icon
     const statusIconMap: Record<string, { iconName: React.ComponentProps<typeof Ionicons>['name']; iconColor: string }> = {
-      approved:    { iconName: 'checkmark-circle', iconColor: '#10B981' },
-      declined:    { iconName: 'close-circle',     iconColor: '#EF4444' },
-      rejected:    { iconName: 'close-circle',     iconColor: '#EF4444' },
-      in_progress: { iconName: 'time-outline',     iconColor: '#F59E0B' },
-      pending:     { iconName: 'time-outline',     iconColor: '#F59E0B' },
-      created:     { iconName: 'document-outline', iconColor: '#6B7280' },
-      expired:     { iconName: 'timer-outline',    iconColor: '#6B7280' },
-      abandoned:   { iconName: 'exit-outline',     iconColor: '#6B7280' },
+      approved:    { iconName: 'checkmark-circle', iconColor: theme.colors.success },
+      declined:    { iconName: 'close-circle',     iconColor: theme.colors.error },
+      rejected:    { iconName: 'close-circle',     iconColor: theme.colors.error },
+      in_progress: { iconName: 'time-outline',     iconColor: theme.colors.warning },
+      pending:     { iconName: 'time-outline',     iconColor: theme.colors.warning },
+      created:     { iconName: 'document-outline', iconColor: theme.colors.text.tertiary },
+      expired:     { iconName: 'timer-outline',    iconColor: theme.colors.text.tertiary },
+      abandoned:   { iconName: 'exit-outline',     iconColor: theme.colors.text.tertiary },
     };
-    const iconInfo = statusIconMap[currentStatus] ?? { iconName: 'help-circle-outline' as const, iconColor: '#6B7280' };
+    const iconInfo = statusIconMap[currentStatus] ?? { iconName: 'help-circle-outline' as const, iconColor: theme.colors.text.tertiary };
     return {
       iconName: iconInfo.iconName,
       iconColor: iconInfo.iconColor,
@@ -298,12 +298,12 @@ export default function KYCStatusScreen() {
   if (loading) {
     return (
       <LinearGradient
-        colors={['#000000', '#0a3d2e', '#000000']}
+        colors={theme.colors.background.gradient as [string, string, string]}
         locations={[0, 0.5, 1]}
         style={{ flex: 1 }}
       >
         <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Spinner size="large" color={theme.colors.accent.primary} />
+          <Spinner size="large" />
           <Text style={{ color: theme.colors.text.secondary, marginTop: 16 }}>
             Loading verification status...
           </Text>
@@ -314,7 +314,7 @@ export default function KYCStatusScreen() {
 
   return (
     <LinearGradient
-      colors={['#000000', '#0a3d2e', '#000000']}
+      colors={theme.colors.background.gradient as [string, string, string]}
       locations={[0, 0.5, 1]}
       style={{ flex: 1 }}
     >
@@ -357,14 +357,14 @@ export default function KYCStatusScreen() {
           {currentStatus === 'approved' && adminApproval && (
             <View style={{
               alignSelf: 'center',
-              backgroundColor: adminApproval === 'approved' ? '#10B98120' : adminApproval === 'rejected' ? '#EF444420' : '#F59E0B20',
+              backgroundColor: adminApproval === 'approved' ? theme.colors.success + '20' : adminApproval === 'rejected' ? theme.colors.error + '20' : theme.colors.warning + '20',
               paddingHorizontal: 16,
               paddingVertical: 8,
               borderRadius: 20,
               marginBottom: 16,
             }}>
               <Text style={{
-                color: adminApproval === 'approved' ? '#10B981' : adminApproval === 'rejected' ? '#EF4444' : '#F59E0B',
+                color: adminApproval === 'approved' ? theme.colors.success : adminApproval === 'rejected' ? theme.colors.error : theme.colors.warning,
                 fontSize: 13,
                 fontWeight: '600',
               }}>
@@ -383,7 +383,7 @@ export default function KYCStatusScreen() {
               alignItems: 'center', 
               marginBottom: 24 
             }}>
-              <Spinner size="small" color={theme.colors.accent.primary} />
+              <Spinner size="small" />
               <Text style={{ 
                 color: theme.colors.text.tertiary, 
                 fontSize: 12, 
@@ -614,14 +614,14 @@ export default function KYCStatusScreen() {
                 style={{ marginBottom: 16 }} 
               />
               <View style={{
-                backgroundColor: '#0EA5E910',
+                backgroundColor: theme.colors.info + '10',
                 borderRadius: 12,
                 padding: 16,
                 marginBottom: 16,
                 borderWidth: 1,
-                borderColor: '#0EA5E930',
+                borderColor: theme.colors.info + '30',
               }}>
-                <Text style={{ color: '#38BDF8', fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
+                <Text style={{ color: theme.colors.info, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
                   What happens next?
                 </Text>
                 <Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>

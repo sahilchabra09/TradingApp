@@ -2,18 +2,8 @@
  * News Tab Screen
  *
  * Two modes, toggled by the segment control at the top:
- *
- *   LIVE      — WebSocket stream: new articles prepend the list in real time.
- *               The server sends the last 50 buffered articles on connect so
- *               the feed is never empty.  A green "● LIVE" dot shows stream
- *               health.
- *
- *   HISTORY   — Paginated REST fetch from Alpaca's historical news endpoint.
- *               Supports infinite scroll and pull-to-refresh.
- *
- * Both modes support the search bar which filters by symbol / keyword.
- * Searching switches to HISTORY mode automatically (REST supports symbol
- * filtering natively; the WS buffer is too small for keyword search).
+ *   LIVE      — WebSocket stream
+ *   HISTORY   — Paginated REST fetch
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -32,35 +22,27 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Spinner } from '@/components/Spinner';
 import { NewsCard } from '@/components/NewsCard';
+import { useAppTheme } from '@/lib/ThemeContext';
 import { fetchNews } from '@/lib/news-api';
 import { useNewsStream, useStableToken, useDebounce } from '@/lib/hooks';
 import type { NewsArticle } from '@/lib/news-api';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const PAGE_SIZE = 20;
-
 type FeedMode = 'live' | 'history';
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function NewsScreen() {
 	const router                   = useRouter();
+	const { theme }                = useAppTheme();
 	const { isSignedIn, getToken } = useAuth();
 	const stableGetToken           = useStableToken(getToken);
 	const params                   = useLocalSearchParams<{ symbol?: string }>();
 
-	// ── Mode & search ─────────────────────────────────────────────────────────
-	// If navigated from asset-detail with a symbol, pre-fill the search bar
-	// and start in history mode (symbol filtering requires REST).
 	const initialSymbol = params.symbol ? String(params.symbol).toUpperCase() : '';
 	const [mode, setMode]               = useState<FeedMode>(initialSymbol ? 'history' : 'live');
 	const [searchQuery, setSearchQuery] = useState(initialSymbol);
 	const debouncedQuery                = useDebounce(searchQuery, 350);
 	const isSearching                   = debouncedQuery.trim().length > 0;
 
-	// Keep search / mode in sync when params change (e.g. navigating from a
-	// different asset while the tab is already mounted).
 	useEffect(() => {
 		if (params.symbol) {
 			const sym = String(params.symbol).toUpperCase();
@@ -80,7 +62,6 @@ export default function NewsScreen() {
 
 	const handleArticle = useCallback((article: NewsArticle) => {
 		setLiveArticles((prev) => {
-			// Deduplicate by id
 			if (prev.some((a) => a.id === article.id)) return prev;
 			return [article, ...prev];
 		});
@@ -124,9 +105,13 @@ export default function NewsScreen() {
 					stableGetToken
 				);
 
-				setHistoryArticles((prev) =>
-					replace ? result.news : [...prev, ...result.news]
-				);
+				setHistoryArticles((prev) => {
+					if (replace) return result.news;
+					// Deduplicate — Alpaca can return the same article ID across pages
+					const existingIds = new Set(prev.map((a) => a.id));
+					const fresh = result.news.filter((a) => !existingIds.has(a.id));
+					return [...prev, ...fresh];
+				});
 				setNextPageToken(result.next_page_token);
 				setHistoryError(null);
 			} catch (err) {
@@ -142,7 +127,6 @@ export default function NewsScreen() {
 		[isSignedIn, stableGetToken, debouncedQuery]
 	);
 
-	// Load history when mode or search query changes
 	useEffect(() => {
 		if (mode === 'history' || isSearching) void loadHistory(true);
 	}, [mode, debouncedQuery]);
@@ -158,10 +142,8 @@ export default function NewsScreen() {
 		void loadHistory(false, nextPageToken);
 	}, [loadHistory, nextPageToken]);
 
-	// ── Derived display list ──────────────────────────────────────────────────
 	const displayArticles: NewsArticle[] = mode === 'live' ? liveArticles : historyArticles;
 
-	// Local keyword filter on top of the live feed
 	const filteredArticles = useMemo(() => {
 		if (!isSearching || mode !== 'live') return displayArticles;
 		const q = debouncedQuery.trim().toUpperCase();
@@ -173,7 +155,6 @@ export default function NewsScreen() {
 		);
 	}, [displayArticles, isSearching, debouncedQuery, mode]);
 
-	// ── Navigate to article ───────────────────────────────────────────────────
 	const openArticle = useCallback(
 		(article: NewsArticle) => {
 			router.push({
@@ -184,8 +165,6 @@ export default function NewsScreen() {
 		[router]
 	);
 
-	// ── Render ────────────────────────────────────────────────────────────────
-
 	const showSpinner =
 		(mode === 'live' && isLiveLoading) ||
 		(mode === 'history' && historyLoading && historyArticles.length === 0);
@@ -194,21 +173,19 @@ export default function NewsScreen() {
 
 	return (
 		<LinearGradient
-			colors={['#000000', '#0a1f18', '#000000']}
+			colors={theme.colors.background.gradient as [string, string, string]}
 			locations={[0, 0.5, 1]}
 			style={{ flex: 1 }}
 		>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-
-				{/* ── Header ────────────────────────────────────────────── */}
+				{/* Header */}
 				<View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>
 					<View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
 						<Text
-							style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', flex: 1 }}
+							style={{ color: theme.colors.text.primary, fontSize: 22, fontWeight: '700', flex: 1, letterSpacing: -0.3 }}
 						>
 							Market News
 						</Text>
-						{/* Live status dot */}
 						{mode === 'live' && (
 							<View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
 								<View
@@ -216,28 +193,30 @@ export default function NewsScreen() {
 										width: 7,
 										height: 7,
 										borderRadius: 4,
-										backgroundColor: isLiveConnected ? '#10B981' : '#F59E0B',
+										backgroundColor: isLiveConnected ? theme.colors.success : theme.colors.warning,
 									}}
 								/>
-								<Text style={{ color: '#6B7280', fontSize: 12 }}>
+								<Text style={{ color: theme.colors.text.tertiary, fontSize: 12 }}>
 									{isLiveConnected
 										? 'Live'
 										: connectionState === 'reconnecting'
-										? 'Reconnecting…'
-										: 'Connecting…'}
+										? 'Reconnecting...'
+										: 'Connecting...'}
 								</Text>
 							</View>
 						)}
 					</View>
 
-					{/* ── Mode toggle ───────────────────────────────────── */}
+					{/* Mode toggle */}
 					<View
 						style={{
 							flexDirection: 'row',
-							backgroundColor: 'rgba(255,255,255,0.05)',
+							backgroundColor: theme.colors.surface.primary,
 							borderRadius: 12,
 							padding: 3,
 							marginBottom: 10,
+							borderWidth: 1,
+							borderColor: theme.colors.border.primary,
 						}}
 					>
 						{(['live', 'history'] as FeedMode[]).map((m) => (
@@ -250,62 +229,62 @@ export default function NewsScreen() {
 									borderRadius: 10,
 									alignItems: 'center',
 									backgroundColor:
-										mode === m ? 'rgba(16,185,129,0.18)' : 'transparent',
+										mode === m ? theme.colors.surface.elevated : 'transparent',
 									borderWidth: mode === m ? 1 : 0,
-									borderColor: 'rgba(16,185,129,0.3)',
+									borderColor: theme.colors.border.secondary,
 								}}
 							>
 								<Text
 									style={{
-										color: mode === m ? '#10B981' : '#6B7280',
+										color: mode === m ? theme.colors.accent.primary : theme.colors.text.tertiary,
 										fontSize: 13,
 										fontWeight: mode === m ? '700' : '500',
 									}}
 								>
-									{m === 'live' ? '● Live' : '  History'}
+									{m === 'live' ? 'Live' : 'History'}
 								</Text>
 							</TouchableOpacity>
 						))}
 					</View>
 
-					{/* ── Search bar ────────────────────────────────────── */}
+					{/* Search bar */}
 					<View
 						style={{
 							flexDirection: 'row',
 							alignItems: 'center',
-							backgroundColor: 'rgba(255,255,255,0.06)',
+							backgroundColor: theme.colors.surface.secondary,
 							borderRadius: 14,
 							paddingHorizontal: 12,
 							height: 44,
 							borderWidth: 1,
-							borderColor: 'rgba(255,255,255,0.1)',
+							borderColor: theme.colors.border.primary,
 						}}
 					>
 						<Ionicons
 							name="search"
 							size={16}
-							color="#6B7280"
+							color={theme.colors.text.tertiary}
 							style={{ marginRight: 8 }}
 						/>
 						<TextInput
 							value={searchQuery}
 							onChangeText={setSearchQuery}
-							placeholder="Search by symbol or keyword…"
-							placeholderTextColor="#4B5563"
-							style={{ flex: 1, color: '#FFFFFF', fontSize: 14 }}
+							placeholder="Search by symbol or keyword..."
+							placeholderTextColor={theme.colors.text.disabled}
+							style={{ flex: 1, color: theme.colors.text.primary, fontSize: 14 }}
 							autoCapitalize="characters"
 							autoCorrect={false}
 							returnKeyType="search"
 						/>
 						{searchQuery.length > 0 && (
 							<TouchableOpacity onPress={() => setSearchQuery('')}>
-								<Ionicons name="close-circle" size={16} color="#6B7280" />
+								<Ionicons name="close-circle" size={16} color={theme.colors.text.tertiary} />
 							</TouchableOpacity>
 						)}
 					</View>
 				</View>
 
-				{/* ── Error banner ──────────────────────────────────────── */}
+				{/* Error banner */}
 				{errorMessage ? (
 					<View
 						style={{
@@ -313,31 +292,31 @@ export default function NewsScreen() {
 							marginBottom: 8,
 							padding: 12,
 							borderRadius: 12,
-							backgroundColor: 'rgba(239,68,68,0.1)',
+							backgroundColor: `${theme.colors.error}15`,
 							borderWidth: 1,
-							borderColor: 'rgba(239,68,68,0.2)',
+							borderColor: `${theme.colors.error}25`,
 						}}
 					>
-						<Text style={{ color: '#FCA5A5', fontSize: 13 }}>{errorMessage}</Text>
+						<Text style={{ color: theme.colors.error, fontSize: 13 }}>{errorMessage}</Text>
 					</View>
 				) : null}
 
-				{/* ── Content ───────────────────────────────────────────── */}
+				{/* Content */}
 				{showSpinner ? (
 					<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-						<Spinner color="#10B981" size="large" />
-						<Text style={{ color: '#6B7280', marginTop: 14, fontSize: 14 }}>
-							{mode === 'live' ? 'Connecting to live feed…' : 'Loading news…'}
+						<Spinner size="large" />
+						<Text style={{ color: theme.colors.text.tertiary, marginTop: 14, fontSize: 14 }}>
+							{mode === 'live' ? 'Connecting to live feed...' : 'Loading news...'}
 						</Text>
 					</View>
 				) : (
 					<FlatList
 						data={filteredArticles}
-						keyExtractor={(item) => String(item.id)}
+						keyExtractor={(item, index) => `${item.id}-${index}`}
 						contentContainerStyle={{
 							paddingHorizontal: 16,
 							paddingTop: 4,
-							paddingBottom: 110,
+							paddingBottom: 120,
 						}}
 						showsVerticalScrollIndicator={false}
 						onRefresh={mode === 'history' ? handleRefresh : undefined}
@@ -348,14 +327,13 @@ export default function NewsScreen() {
 							<NewsCard
 								article={item}
 								onPress={() => openArticle(item)}
-								// Mark only the very first article as "live" when in live mode
 								isLive={mode === 'live' && index === 0 && isLiveConnected}
 							/>
 						)}
 						ListFooterComponent={
 							mode === 'history' && loadingMoreRef.current ? (
 								<View style={{ paddingVertical: 16, alignItems: 'center' }}>
-									<ActivityIndicator color="#10B981" />
+									<ActivityIndicator color={theme.colors.accent.primary} />
 								</View>
 							) : null
 						}
@@ -364,25 +342,25 @@ export default function NewsScreen() {
 								style={{
 									padding: 32,
 									alignItems: 'center',
-									backgroundColor: 'rgba(255,255,255,0.03)',
+									backgroundColor: theme.colors.surface.primary,
 									borderRadius: 16,
 									borderWidth: 1,
-									borderColor: 'rgba(255,255,255,0.07)',
+									borderColor: theme.colors.border.primary,
 								}}
 							>
 								<Ionicons
 									name="newspaper-outline"
 									size={36}
-									color="#374151"
+									color={theme.colors.text.disabled}
 									style={{ marginBottom: 12 }}
 								/>
 								<Text
-									style={{ color: '#6B7280', fontSize: 14, textAlign: 'center' }}
+									style={{ color: theme.colors.text.tertiary, fontSize: 14, textAlign: 'center' }}
 								>
 									{isSearching
 										? `No news found for "${debouncedQuery.trim()}".`
 										: mode === 'live'
-										? 'Waiting for live articles…'
+										? 'Waiting for live articles...'
 										: 'No articles available.'}
 								</Text>
 							</View>

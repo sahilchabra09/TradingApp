@@ -30,6 +30,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import type { WebViewNavigation } from 'react-native-webview';
 import type { NewsArticle } from '@/lib/news-api';
+import { useTheme } from '@/lib/hooks';
+import type { Theme } from '@/lib/theme';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -37,7 +39,7 @@ function capitalise(s: string): string {
 	return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 }
 
-function buildFallbackHtml(content: string): string {
+function buildFallbackHtml(content: string, theme: Theme): string {
 	return `<!DOCTYPE html>
 <html>
 <head>
@@ -48,21 +50,21 @@ function buildFallbackHtml(content: string): string {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 16px;
     line-height: 1.7;
-    color: #D1D5DB;
-    background: #0a0f0d;
+    color: ${theme.colors.text.secondary};
+    background: ${theme.colors.background.primary};
     padding: 16px 16px 40px;
   }
   p  { margin-bottom: 16px; }
-  h1, h2, h3 { color: #F9FAFB; margin: 20px 0 10px; }
-  a  { color: #10B981; text-decoration: none; }
+  h1, h2, h3 { color: ${theme.colors.text.primary}; margin: 20px 0 10px; }
+  a  { color: ${theme.colors.accent.primary}; text-decoration: none; }
   img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block; }
   ul, ol { padding-left: 20px; margin-bottom: 14px; }
   li { margin-bottom: 6px; }
-  strong, b { color: #F3F4F6; }
+  strong, b { color: ${theme.colors.text.primary}; }
   blockquote {
-    border-left: 3px solid rgba(16,185,129,0.5);
+    border-left: 3px solid ${theme.colors.border.accent};
     padding-left: 14px;
-    color: #9CA3AF;
+    color: ${theme.colors.text.secondary};
     margin: 14px 0;
   }
 </style>
@@ -86,7 +88,7 @@ true;
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
-function ProgressBar({ progress }: { progress: Animated.Value }) {
+function ProgressBar({ progress, color }: { progress: Animated.Value; color: string }) {
 	return (
 		<View
 			style={{
@@ -98,7 +100,7 @@ function ProgressBar({ progress }: { progress: Animated.Value }) {
 			<Animated.View
 				style={{
 					height: '100%',
-					backgroundColor: '#10B981',
+					backgroundColor: color,
 					width: progress.interpolate({
 						inputRange: [0, 1],
 						outputRange: ['0%', '100%'],
@@ -112,6 +114,7 @@ function ProgressBar({ progress }: { progress: Animated.Value }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ArticleScreen() {
+	const theme  = useTheme();
 	const router = useRouter();
 	const { height: screenHeight } = useWindowDimensions();
 	const params  = useLocalSearchParams<{ data?: string }>();
@@ -151,24 +154,24 @@ export default function ArticleScreen() {
 
 	if (!article) {
 		return (
-			<View style={{ flex: 1, backgroundColor: '#000000' }}>
+			<View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
 				<SafeAreaView
 					style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}
 					edges={['top', 'bottom']}
 				>
-					<Ionicons name="newspaper-outline" size={48} color="#374151" style={{ marginBottom: 16 }} />
-					<Text style={{ color: '#FFFFFF', fontSize: 16, textAlign: 'center', marginBottom: 20 }}>
+					<Ionicons name="newspaper-outline" size={48} color={theme.colors.text.disabled} style={{ marginBottom: 16 }} />
+					<Text style={{ color: theme.colors.text.primary, fontSize: 16, textAlign: 'center', marginBottom: 20 }}>
 						Article not available.
 					</Text>
 					<TouchableOpacity
 						onPress={() => router.back()}
 						style={{
 							paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
-							backgroundColor: 'rgba(16,185,129,0.15)',
-							borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)',
+							backgroundColor: theme.colors.accent.glow,
+							borderWidth: 1, borderColor: theme.colors.border.accent,
 						}}
 					>
-						<Text style={{ color: '#10B981', fontWeight: '600' }}>Go back</Text>
+						<Text style={{ color: theme.colors.accent.primary, fontWeight: '600' }}>Go back</Text>
 					</TouchableOpacity>
 				</SafeAreaView>
 			</View>
@@ -184,9 +187,9 @@ export default function ArticleScreen() {
 				alignItems: 'center',
 				paddingHorizontal: 12,
 				paddingVertical: 10,
-				backgroundColor: '#000000',
+				backgroundColor: theme.colors.background.primary,
 				borderBottomWidth: 1,
-				borderBottomColor: 'rgba(255,255,255,0.06)',
+				borderBottomColor: theme.colors.border.primary,
 				gap: 8,
 			}}
 		>
@@ -195,15 +198,15 @@ export default function ArticleScreen() {
 				hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
 				style={{
 					width: 34, height: 34, borderRadius: 17,
-					backgroundColor: 'rgba(255,255,255,0.08)',
+					backgroundColor: theme.colors.surface.secondary,
 					alignItems: 'center', justifyContent: 'center',
 				}}
 			>
-				<Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+				<Ionicons name="chevron-back" size={20} color={theme.colors.text.primary} />
 			</TouchableOpacity>
 
 			<Text
-				style={{ flex: 1, color: '#9CA3AF', fontSize: 13, fontWeight: '600' }}
+				style={{ flex: 1, color: theme.colors.text.secondary, fontSize: 13, fontWeight: '600' }}
 				numberOfLines={1}
 			>
 				{capitalise(article.source || 'Article')}
@@ -215,11 +218,11 @@ export default function ArticleScreen() {
 					hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
 					style={{
 						width: 34, height: 34, borderRadius: 17,
-						backgroundColor: 'rgba(255,255,255,0.08)',
+						backgroundColor: theme.colors.surface.secondary,
 						alignItems: 'center', justifyContent: 'center',
 					}}
 				>
-					<Ionicons name="open-outline" size={18} color="#9CA3AF" />
+					<Ionicons name="open-outline" size={18} color={theme.colors.text.secondary} />
 				</TouchableOpacity>
 			)}
 		</View>
@@ -229,16 +232,16 @@ export default function ArticleScreen() {
 
 	if (article.url && !loadError) {
 		return (
-			<View style={{ flex: 1, backgroundColor: '#000000' }}>
+			<View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
 				<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 					{header}
 
 					{/* Progress bar — visible while loading */}
-					{isLoading && <ProgressBar progress={progressAnim} />}
+					{isLoading && <ProgressBar progress={progressAnim} color={theme.colors.accent.primary} />}
 
 					<WebView
 						source={{ uri: article.url }}
-						style={{ flex: 1, backgroundColor: '#000000' }}
+						style={{ flex: 1, backgroundColor: theme.colors.background.primary }}
 						onLoadStart={() => {
 							setIsLoading(true);
 							setLoadError(false);
@@ -276,12 +279,12 @@ export default function ArticleScreen() {
 
 	if (loadError) {
 		return (
-			<View style={{ flex: 1, backgroundColor: '#000000' }}>
+			<View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
 				<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 					{header}
 					<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 16 }}>
-						<Ionicons name="cloud-offline-outline" size={48} color="#374151" />
-						<Text style={{ color: '#9CA3AF', fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
+						<Ionicons name="cloud-offline-outline" size={48} color={theme.colors.text.disabled} />
+						<Text style={{ color: theme.colors.text.secondary, fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
 							The article couldn't be loaded.{'\n'}You can try opening it in your browser.
 						</Text>
 						{article.url && (
@@ -290,12 +293,12 @@ export default function ArticleScreen() {
 								style={{
 									flexDirection: 'row', alignItems: 'center', gap: 8,
 									paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14,
-									backgroundColor: 'rgba(16,185,129,0.12)',
-									borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)',
+									backgroundColor: theme.colors.accent.glow,
+									borderWidth: 1, borderColor: theme.colors.border.accent,
 								}}
 							>
-								<Ionicons name="open-outline" size={16} color="#10B981" />
-								<Text style={{ color: '#10B981', fontSize: 14, fontWeight: '600' }}>
+								<Ionicons name="open-outline" size={16} color={theme.colors.accent.primary} />
+								<Text style={{ color: theme.colors.accent.primary, fontSize: 14, fontWeight: '600' }}>
 									Open in browser
 								</Text>
 							</TouchableOpacity>
@@ -304,7 +307,7 @@ export default function ArticleScreen() {
 							onPress={() => { setLoadError(false); setIsLoading(true); }}
 							style={{ paddingVertical: 8 }}
 						>
-							<Text style={{ color: '#6B7280', fontSize: 13 }}>Try again</Text>
+							<Text style={{ color: theme.colors.text.tertiary, fontSize: 13 }}>Try again</Text>
 						</TouchableOpacity>
 					</View>
 				</SafeAreaView>
@@ -318,7 +321,7 @@ export default function ArticleScreen() {
 	const summary     = article.summary?.trim();
 
 	return (
-		<View style={{ flex: 1, backgroundColor: '#000000' }}>
+		<View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 				{header}
 				<ScrollView
@@ -329,7 +332,7 @@ export default function ArticleScreen() {
 					<View style={{ padding: 20, paddingBottom: 0 }}>
 						<Text
 							style={{
-								color: '#FFFFFF', fontSize: 22, fontWeight: '700',
+								color: theme.colors.text.primary, fontSize: 22, fontWeight: '700',
 								lineHeight: 30, marginBottom: 14,
 							}}
 						>
@@ -344,11 +347,11 @@ export default function ArticleScreen() {
 										key={s}
 										style={{
 											paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
-											backgroundColor: 'rgba(16,185,129,0.1)',
-											borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)',
+											backgroundColor: theme.colors.accent.glow,
+											borderWidth: 1, borderColor: theme.colors.border.accent,
 										}}
 									>
-										<Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>
+										<Text style={{ color: theme.colors.accent.primary, fontSize: 11, fontWeight: '700' }}>
 											{s}
 										</Text>
 									</View>
@@ -360,7 +363,7 @@ export default function ArticleScreen() {
 						{summary && (
 							<Text
 								style={{
-									color: '#9CA3AF', fontSize: 15, lineHeight: 23,
+									color: theme.colors.text.secondary, fontSize: 15, lineHeight: 23,
 									marginBottom: 16, fontStyle: 'italic',
 								}}
 							>
@@ -368,14 +371,14 @@ export default function ArticleScreen() {
 							</Text>
 						)}
 
-						<View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 4 }} />
+						<View style={{ height: 1, backgroundColor: theme.colors.border.primary, marginBottom: 4 }} />
 					</View>
 
 					{/* Partial HTML content */}
 					{htmlContent ? (
 						<View style={{ height: htmlHeight, marginHorizontal: 4 }}>
 							<WebView
-								source={{ html: buildFallbackHtml(htmlContent) }}
+								source={{ html: buildFallbackHtml(htmlContent, theme) }}
 								scrollEnabled={false}
 								style={{ backgroundColor: 'transparent' }}
 								originWhitelist={['*']}

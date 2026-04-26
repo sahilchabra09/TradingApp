@@ -5,6 +5,10 @@
  * Handles the patterns that appear in AI research responses:
  * headings (h1-h3), bold, italic, inline code, bullet/numbered lists,
  * blockquotes, fenced code blocks, horizontal rules, and plain paragraphs.
+ *
+ * NOTE: This component uses static styles because it may render outside the
+ * theme context (e.g., in modals). For theme-aware text, wrap the component
+ * and override text colors via the parent View.
  */
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
@@ -37,7 +41,6 @@ function parseBlocks(markdown: string): Block[] {
 		const raw = lines[i];
 		const line = raw ?? '';
 
-		// Fenced code block
 		if (line.startsWith('```')) {
 			const codeLines: string[] = [];
 			i++;
@@ -50,14 +53,12 @@ function parseBlocks(markdown: string): Block[] {
 			continue;
 		}
 
-		// Horizontal rule
 		if (/^(\s*[-*_]){3,}\s*$/.test(line)) {
 			blocks.push({ type: 'hr' });
 			i++;
 			continue;
 		}
 
-		// Headings
 		const h3 = line.match(/^###\s+(.*)/);
 		if (h3) { blocks.push({ type: 'h3', content: h3[1] ?? '' }); i++; continue; }
 		const h2 = line.match(/^##\s+(.*)/);
@@ -65,7 +66,6 @@ function parseBlocks(markdown: string): Block[] {
 		const h1 = line.match(/^#\s+(.*)/);
 		if (h1) { blocks.push({ type: 'h1', content: h1[1] ?? '' }); i++; continue; }
 
-		// Blockquote
 		if (line.startsWith('>')) {
 			const content = line.replace(/^>\s?/, '');
 			blocks.push({ type: 'blockquote', content });
@@ -73,7 +73,6 @@ function parseBlocks(markdown: string): Block[] {
 			continue;
 		}
 
-		// Bullet list
 		const bullet = line.match(/^(\s*)[*\-+]\s+(.*)/);
 		if (bullet) {
 			const depth = Math.floor((bullet[1] ?? '').length / 2);
@@ -82,7 +81,6 @@ function parseBlocks(markdown: string): Block[] {
 			continue;
 		}
 
-		// Numbered list
 		const numbered = line.match(/^\s*(\d+)\.\s+(.*)/);
 		if (numbered) {
 			blocks.push({ type: 'numbered', content: numbered[2] ?? '', index: parseInt(numbered[1] ?? '1', 10) });
@@ -90,13 +88,11 @@ function parseBlocks(markdown: string): Block[] {
 			continue;
 		}
 
-		// Skip blank lines (add spacing via margin)
 		if (line.trim() === '') {
 			i++;
 			continue;
 		}
 
-		// Paragraph: collect consecutive non-special lines
 		const paragraphLines: string[] = [];
 		while (
 			i < lines.length &&
@@ -122,7 +118,6 @@ function parseBlocks(markdown: string): Block[] {
 
 function parseInline(text: string): Span[] {
 	const spans: Span[] = [];
-	// Match: ***bold_italic***, **bold**, *italic*, `code`
 	const pattern = /(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g;
 	let lastIndex = 0;
 	let match: RegExpExecArray | null;
@@ -184,24 +179,20 @@ function renderBlock(block: Block, idx: number): React.ReactNode {
 			return <InlineText key={idx} text={block.content} baseStyle={mdStyles.h2} />;
 		case 'h3':
 			return <InlineText key={idx} text={block.content} baseStyle={mdStyles.h3} />;
-
 		case 'hr':
 			return <View key={idx} style={mdStyles.hr} />;
-
 		case 'code_block':
 			return (
 				<View key={idx} style={mdStyles.codeBlock}>
 					<Text style={mdStyles.codeBlockText}>{block.content}</Text>
 				</View>
 			);
-
 		case 'blockquote':
 			return (
 				<View key={idx} style={mdStyles.blockquote}>
 					<InlineText text={block.content} baseStyle={mdStyles.blockquoteText} />
 				</View>
 			);
-
 		case 'bullet':
 			return (
 				<View key={idx} style={[mdStyles.listRow, { paddingLeft: 8 + block.depth * 16 }]}>
@@ -209,7 +200,6 @@ function renderBlock(block: Block, idx: number): React.ReactNode {
 					<InlineText text={block.content} baseStyle={mdStyles.listText} />
 				</View>
 			);
-
 		case 'numbered':
 			return (
 				<View key={idx} style={mdStyles.listRow}>
@@ -217,7 +207,6 @@ function renderBlock(block: Block, idx: number): React.ReactNode {
 					<InlineText text={block.content} baseStyle={mdStyles.listText} />
 				</View>
 			);
-
 		case 'paragraph':
 			return <InlineText key={idx} text={block.content} baseStyle={mdStyles.paragraph} />;
 	}
@@ -231,24 +220,25 @@ export default function SimpleMarkdown({ children }: { children: string }) {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+// Neutral palette — works well on dark and is not green-tinted.
 
 const MONO = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 const mdStyles = StyleSheet.create({
-	base: { color: '#D1FAE5', fontSize: 14, lineHeight: 22 },
-	paragraph: { color: '#D1FAE5', fontSize: 14, lineHeight: 22, marginBottom: 8 },
-	bold: { fontWeight: '700', color: '#FFFFFF' },
-	italic: { fontStyle: 'italic', color: '#6EE7B7' },
+	base: { color: '#E0E0E4', fontSize: 14, lineHeight: 22 },
+	paragraph: { color: '#E0E0E4', fontSize: 14, lineHeight: 22, marginBottom: 8 },
+	bold: { fontWeight: '700', color: '#F5F5F7' },
+	italic: { fontStyle: 'italic', color: '#BABAC0' },
 	inlineCode: {
 		fontFamily: MONO,
 		fontSize: 12,
-		color: '#6EE7B7',
-		backgroundColor: 'rgba(16,185,129,0.18)',
+		color: '#D4B978',
+		backgroundColor: 'rgba(201, 169, 98, 0.12)',
 		paddingHorizontal: 4,
 		borderRadius: 4,
 	},
 	h1: {
-		color: '#FFFFFF',
+		color: '#F5F5F7',
 		fontSize: 20,
 		fontWeight: '700',
 		marginTop: 16,
@@ -256,7 +246,7 @@ const mdStyles = StyleSheet.create({
 		lineHeight: 28,
 	},
 	h2: {
-		color: '#FFFFFF',
+		color: '#F5F5F7',
 		fontSize: 17,
 		fontWeight: '700',
 		marginTop: 14,
@@ -264,7 +254,7 @@ const mdStyles = StyleSheet.create({
 		lineHeight: 24,
 	},
 	h3: {
-		color: '#ECFDF5',
+		color: '#E8E8EC',
 		fontSize: 15,
 		fontWeight: '600',
 		marginTop: 10,
@@ -273,7 +263,7 @@ const mdStyles = StyleSheet.create({
 	},
 	hr: {
 		height: 1,
-		backgroundColor: 'rgba(255,255,255,0.1)',
+		backgroundColor: 'rgba(255,255,255,0.08)',
 		marginVertical: 12,
 	},
 	codeBlock: {
@@ -285,17 +275,17 @@ const mdStyles = StyleSheet.create({
 	codeBlockText: {
 		fontFamily: MONO,
 		fontSize: 12,
-		color: '#A7F3D0',
+		color: '#D4B978',
 		lineHeight: 18,
 	},
 	blockquote: {
 		borderLeftWidth: 3,
-		borderLeftColor: '#059669',
+		borderLeftColor: '#C9A962',
 		paddingLeft: 12,
 		marginVertical: 4,
 	},
 	blockquoteText: {
-		color: 'rgba(167,243,208,0.75)',
+		color: 'rgba(224, 224, 228, 0.75)',
 		fontSize: 14,
 		lineHeight: 22,
 		fontStyle: 'italic',
@@ -307,14 +297,14 @@ const mdStyles = StyleSheet.create({
 		gap: 8,
 	},
 	bullet: {
-		color: '#34D399',
+		color: '#C9A962',
 		fontSize: 14,
 		lineHeight: 22,
 		minWidth: 16,
 	},
 	listText: {
 		flex: 1,
-		color: '#D1FAE5',
+		color: '#E0E0E4',
 		fontSize: 14,
 		lineHeight: 22,
 	},

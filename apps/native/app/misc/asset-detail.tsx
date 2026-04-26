@@ -150,7 +150,7 @@ export default function AssetDetailScreen() {
 
 	if (!symbol) {
 		return (
-			<LinearGradient colors={['#000000', '#051f1a', '#000000']} style={{ flex: 1 }}>
+			<LinearGradient colors={theme.colors.background.gradient as [string, string, string]} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
 				<SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
 					<Text style={{ color: theme.colors.text.primary, fontSize: 18, marginBottom: 8 }}>
 						Asset symbol is missing
@@ -162,7 +162,7 @@ export default function AssetDetailScreen() {
 	}
 
 	return (
-		<LinearGradient colors={['#000000', '#041d16', '#000000']} style={{ flex: 1 }}>
+		<LinearGradient colors={theme.colors.background.gradient as [string, string, string]} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 				<View style={{ flex: 1 }}>
 				<ScrollView
@@ -183,17 +183,17 @@ export default function AssetDetailScreen() {
 					{/* ── Header: company name + price ─────────────────────────── */}
 					<View style={{ marginBottom: 20 }}>
 						<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-							<View style={{
-								paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
-								backgroundColor: 'rgba(16,185,129,0.1)',
-								borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)',
-							}}>
-								<Text style={{ color: '#10B981', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }}>
+						<View style={{
+							paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+							backgroundColor: theme.colors.accent.glow,
+							borderWidth: 1, borderColor: theme.colors.border.accent,
+						}}>
+							<Text style={{ color: theme.colors.accent.primary, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }}>
 									{symbol}
 								</Text>
 							</View>
 							{quote && (
-								<Text style={{ color: '#4B5563', fontSize: 12 }}>
+								<Text style={{ color: theme.colors.text.disabled, fontSize: 12 }}>
 									{quote.exchange} · {quote.marketDataFeed}
 								</Text>
 							)}
@@ -209,10 +209,10 @@ export default function AssetDetailScreen() {
 						</Text>
 						{error && !isLoading && (
 							<View style={{
-								marginTop: 8, padding: 10, borderRadius: 10,
-								backgroundColor: 'rgba(239,68,68,0.12)',
-							}}>
-								<Text style={{ color: '#FCA5A5', fontSize: 13 }}>{error}</Text>
+							marginTop: 8, padding: 10, borderRadius: 10,
+							backgroundColor: theme.colors.error + '1F',
+						}}>
+							<Text style={{ color: theme.colors.error, fontSize: 13 }}>{error}</Text>
 							</View>
 						)}
 					</View>
@@ -236,14 +236,14 @@ export default function AssetDetailScreen() {
 							activeOpacity={0.85}
 							onPress={() => router.push({ pathname: '/orders/order-form', params: { symbol, side: 'buy' } })}
 							style={{
-								flex: 1, paddingVertical: 16, borderRadius: 16,
-								backgroundColor: '#10B981',
-								alignItems: 'center', justifyContent: 'center',
-								flexDirection: 'row', gap: 8,
-							}}
-						>
-							<Ionicons name="trending-up" size={18} color="#FFFFFF" />
-							<Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', letterSpacing: 0.3 }}>
+							flex: 1, paddingVertical: 16, borderRadius: 16,
+							backgroundColor: theme.colors.chart.bullish,
+							alignItems: 'center', justifyContent: 'center',
+							flexDirection: 'row', gap: 8,
+						}}
+					>
+						<Ionicons name="trending-up" size={18} color={theme.colors.text.inverse} />
+						<Text style={{ color: theme.colors.text.inverse, fontSize: 17, fontWeight: '700', letterSpacing: 0.3 }}>
 								Buy
 							</Text>
 						</TouchableOpacity>
@@ -252,14 +252,14 @@ export default function AssetDetailScreen() {
 							activeOpacity={0.85}
 							onPress={() => router.push({ pathname: '/orders/order-form', params: { symbol, side: 'sell' } })}
 							style={{
-								flex: 1, paddingVertical: 16, borderRadius: 16,
-								backgroundColor: '#EF4444',
-								alignItems: 'center', justifyContent: 'center',
-								flexDirection: 'row', gap: 8,
-							}}
-						>
-							<Ionicons name="trending-down" size={18} color="#FFFFFF" />
-							<Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', letterSpacing: 0.3 }}>
+							flex: 1, paddingVertical: 16, borderRadius: 16,
+							backgroundColor: theme.colors.chart.bearish,
+							alignItems: 'center', justifyContent: 'center',
+							flexDirection: 'row', gap: 8,
+						}}
+					>
+						<Ionicons name="trending-down" size={18} color={theme.colors.text.inverse} />
+						<Text style={{ color: theme.colors.text.inverse, fontSize: 17, fontWeight: '700', letterSpacing: 0.3 }}>
 								Sell
 							</Text>
 						</TouchableOpacity>
@@ -293,12 +293,12 @@ export default function AssetDetailScreen() {
 								<TouchableOpacity
 									onPress={() => router.push({ pathname: '/orders/order-form', params: { symbol, side: 'buy' } })}
 									style={{
-										paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
-										backgroundColor: 'rgba(16,185,129,0.15)',
-										borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)',
-									}}
-								>
-									<Text style={{ color: '#10B981', fontWeight: '600', fontSize: 14 }}>
+									paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
+									backgroundColor: theme.colors.accent.glow,
+									borderWidth: 1, borderColor: theme.colors.border.accent,
+								}}
+							>
+								<Text style={{ color: theme.colors.accent.primary, fontWeight: '600', fontSize: 14 }}>
 										Buy {symbol}
 									</Text>
 								</TouchableOpacity>
@@ -321,10 +321,10 @@ export default function AssetDetailScreen() {
 								}
 								style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
 							>
-								<Text style={{ color: '#10B981', fontSize: 13, fontWeight: '600' }}>
+								<Text style={{ color: theme.colors.accent.primary, fontSize: 13, fontWeight: '600' }}>
 									View All
 								</Text>
-								<Ionicons name="chevron-forward" size={14} color="#10B981" />
+								<Ionicons name="chevron-forward" size={14} color={theme.colors.accent.primary} />
 							</TouchableOpacity>
 						)}
 					</View>
@@ -351,11 +351,11 @@ export default function AssetDetailScreen() {
 					) : (
 						<View
 							style={{
-								padding: 20,
-								borderRadius: 14,
-								backgroundColor: 'rgba(255,255,255,0.03)',
-								borderWidth: 1,
-								borderColor: 'rgba(255,255,255,0.07)',
+							padding: 20,
+							borderRadius: 14,
+							backgroundColor: theme.colors.surface.glass,
+							borderWidth: 1,
+							borderColor: theme.colors.border.primary,
 								alignItems: 'center',
 							}}
 						>
@@ -383,17 +383,17 @@ export default function AssetDetailScreen() {
 						width: 56,
 						height: 56,
 						borderRadius: 28,
-						backgroundColor: '#7C3AED',
-						alignItems: 'center',
-						justifyContent: 'center',
-						shadowColor: '#7C3AED',
+					backgroundColor: theme.colors.info,
+					alignItems: 'center',
+					justifyContent: 'center',
+					shadowColor: theme.colors.info,
 						shadowOffset: { width: 0, height: 4 },
 						shadowOpacity: 0.5,
 						shadowRadius: 12,
 						elevation: 8,
 					}}
 				>
-					<Ionicons name="sparkles" size={24} color="#FFFFFF" />
+					<Ionicons name="sparkles" size={24} color={theme.colors.text.inverse} />
 				</TouchableOpacity>
 
 				</View>

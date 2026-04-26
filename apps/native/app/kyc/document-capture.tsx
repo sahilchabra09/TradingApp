@@ -233,7 +233,7 @@ export default function DocumentCaptureScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <Ionicons name="warning-outline" size={64} color="#F59E0B" style={{ marginBottom: 16 }} />
+          <Ionicons name="warning-outline" size={64} color={theme.colors.warning} style={{ marginBottom: 16 }} />
           <Text style={{ 
             color: theme.colors.text.primary, 
             fontSize: 18, 
@@ -260,7 +260,7 @@ export default function DocumentCaptureScreen() {
               borderRadius: 8,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>Go Back</Text>
+            <Text style={{ color: theme.colors.text.inverse, fontWeight: '600' }}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -277,8 +277,8 @@ export default function DocumentCaptureScreen() {
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: theme.colors.text.tertiary,
-        backgroundColor: 'white',
+        borderBottomColor: theme.colors.border.primary,
+        backgroundColor: theme.colors.background.primary,
       }}>
         <TouchableOpacity 
           onPress={showExitConfirmation}
@@ -288,7 +288,7 @@ export default function DocumentCaptureScreen() {
         </TouchableOpacity>
         
         <Text style={{ 
-          color: '#000', 
+          color: theme.colors.text.primary, 
           fontSize: 17, 
           fontWeight: '600' 
         }}>
@@ -306,14 +306,14 @@ export default function DocumentCaptureScreen() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: theme.colors.background.primary,
           justifyContent: 'center',
           alignItems: 'center',
           zIndex: 10,
         }}>
-          <Spinner size="large" color="#FFFFFF" />
+          <Spinner size="large" />
           <Text style={{ 
-            color: '#333333', 
+            color: theme.colors.text.secondary, 
             marginTop: 16,
             fontSize: 14 
           }}>
@@ -336,7 +336,7 @@ export default function DocumentCaptureScreen() {
           padding: 20,
           zIndex: 10,
         }}>
-          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" style={{ marginBottom: 16 }} />
+          <Ionicons name="alert-circle-outline" size={64} color={theme.colors.error} style={{ marginBottom: 16 }} />
           <Text style={{ 
             color: theme.colors.text.primary, 
             fontSize: 18, 
@@ -375,7 +375,7 @@ export default function DocumentCaptureScreen() {
                 borderRadius: 8,
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+              <Text style={{ color: theme.colors.text.inverse, fontWeight: '600' }}>Retry</Text>
             </TouchableOpacity>
           </View>
         </View>

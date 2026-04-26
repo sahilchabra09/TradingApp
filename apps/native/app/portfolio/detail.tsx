@@ -28,7 +28,7 @@ import {
 	type PaperStatus,
 } from '@/lib/paper-api';
 import { formatCurrency, formatPercentage, formatRelativeTime } from '@/lib/formatters';
-import { usePaperMarketStream, useStableToken } from '@/lib/hooks';
+import { usePaperMarketStream, useStableToken, useTheme } from '@/lib/hooks';
 import { Spinner } from '@/components/Spinner';
 
 const toNumber = (value: string) => Number(value || 0);
@@ -42,6 +42,7 @@ type PortfolioState = {
 };
 
 function AnimatedPnlBadge({ pnlPercent }: { pnlPercent: number }) {
+	const theme = useTheme();
 	const scale = useSharedValue(1);
 	const previousValue = useRef(pnlPercent);
 
@@ -61,21 +62,26 @@ function AnimatedPnlBadge({ pnlPercent }: { pnlPercent: number }) {
 		transform: [{ scale: scale.value }],
 	}));
 
+	const color = pnlPercent >= 0 ? theme.colors.chart.bullish : theme.colors.chart.bearish;
+
 	return (
 		<Animated.View style={animatedStyle}>
 			<View
-				className={
-					pnlPercent >= 0
-						? 'rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1'
-						: 'rounded-full border border-rose-400/25 bg-rose-500/15 px-3 py-1'
-				}
+				style={{
+					borderRadius: 999,
+					borderWidth: 1,
+					borderColor: color + '40',
+					backgroundColor: color + '26',
+					paddingHorizontal: 12,
+					paddingVertical: 4,
+				}}
 			>
 				<Text
-					className={
-						pnlPercent >= 0
-							? 'text-xs font-semibold text-emerald-300'
-							: 'text-xs font-semibold text-rose-300'
-					}
+					style={{
+						fontSize: 12,
+						fontWeight: '600',
+						color: color,
+					}}
 				>
 					{formatPercentage(pnlPercent)}
 				</Text>
@@ -85,12 +91,22 @@ function AnimatedPnlBadge({ pnlPercent }: { pnlPercent: number }) {
 }
 
 function HoldingRow({ item }: { item: PaperHolding }) {
+	const theme = useTheme();
 	const pnlAmount = toNumber(item.pnlAmount);
 	const pnlPercent = toNumber(item.pnlPercent);
+	const pnlColor = pnlAmount >= 0 ? theme.colors.chart.bullish : theme.colors.chart.bearish;
 
 	return (
 		<Pressable
-			className="mb-3 rounded-3xl border border-white/8 bg-[#07140b] px-4 py-4"
+			style={{
+				marginBottom: 12,
+				borderRadius: 24,
+				borderWidth: 1,
+				borderColor: theme.colors.border.primary,
+				backgroundColor: theme.colors.surface.primary,
+				paddingHorizontal: 16,
+				paddingVertical: 16,
+			}}
 			onPress={() =>
 				router.push({
 					pathname: '/orders/order-form',
@@ -98,39 +114,39 @@ function HoldingRow({ item }: { item: PaperHolding }) {
 				})
 			}
 		>
-			<View className="mb-3 flex-row items-start justify-between">
-				<View className="flex-1 pr-3">
-					<Text className="text-lg font-semibold text-[#E6F8EA]">
+			<View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+				<View style={{ flex: 1, paddingRight: 12 }}>
+					<Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text.primary }}>
 						{item.symbol} · {item.instrumentId}
 					</Text>
-					<Text className="mt-1 text-xs uppercase tracking-[1.6px] text-[#6B9175]">
+					<Text style={{ marginTop: 4, fontSize: 11, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase', color: theme.colors.text.tertiary }}>
 						{item.instrumentName || 'Unknown instrument'} · Qty {item.quantity}
 					</Text>
 				</View>
 				<AnimatedPnlBadge pnlPercent={pnlPercent} />
 			</View>
 
-			<View className="flex-row justify-between">
-				<View className="gap-y-1">
-					<Text className="text-xs text-[#6B9175]">Avg Price</Text>
-					<Text className="text-sm font-medium text-[#E6F8EA]">
+			<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+				<View style={{ gap: 4 }}>
+					<Text style={{ fontSize: 12, color: theme.colors.text.tertiary }}>Avg Price</Text>
+					<Text style={{ fontSize: 14, fontWeight: '500', color: theme.colors.text.primary }}>
 						{formatCurrency(toNumber(item.avgPrice))}
 					</Text>
 				</View>
-				<View className="gap-y-1">
-					<Text className="text-xs text-[#6B9175]">Current</Text>
-					<Text className="text-sm font-medium text-[#E6F8EA]">
+				<View style={{ gap: 4 }}>
+					<Text style={{ fontSize: 12, color: theme.colors.text.tertiary }}>Current</Text>
+					<Text style={{ fontSize: 14, fontWeight: '500', color: theme.colors.text.primary }}>
 						{formatCurrency(toNumber(item.currentPrice))}
 					</Text>
 				</View>
-				<View className="items-end gap-y-1">
-					<Text className="text-xs text-[#6B9175]">P&L</Text>
+				<View style={{ alignItems: 'flex-end', gap: 4 }}>
+					<Text style={{ fontSize: 12, color: theme.colors.text.tertiary }}>P&L</Text>
 					<Text
-						className={
-							pnlAmount >= 0
-								? 'text-sm font-semibold text-emerald-300'
-								: 'text-sm font-semibold text-rose-300'
-						}
+						style={{
+							fontSize: 14,
+							fontWeight: '600',
+							color: pnlColor,
+						}}
 					>
 						{formatCurrency(pnlAmount)}
 					</Text>
@@ -141,6 +157,7 @@ function HoldingRow({ item }: { item: PaperHolding }) {
 }
 
 export default function PortfolioDetailScreen() {
+	const theme = useTheme();
 	const { getToken, isSignedIn } = useAuth();
 	const stableGetToken = useStableToken(getToken);
 	const [activating, setActivating] = useState(false);
@@ -330,9 +347,9 @@ export default function PortfolioDetailScreen() {
 
 	if (!isSignedIn) {
 		return (
-			<SafeAreaView className="flex-1 bg-[#050A05]">
-				<View className="flex-1 items-center justify-center px-6">
-					<Text className="text-center text-base text-[#A8D5B3]">
+			<SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+				<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+					<Text style={{ textAlign: 'center', fontSize: 16, color: theme.colors.text.secondary }}>
 						Sign in to view your paper portfolio.
 					</Text>
 				</View>
@@ -342,10 +359,10 @@ export default function PortfolioDetailScreen() {
 
 	if (isLoading && !state.status) {
 		return (
-			<SafeAreaView className="flex-1 bg-[#050A05]">
-				<View className="flex-1 items-center justify-center">
-					<Spinner color="#00D35A" />
-					<Text className="mt-3 text-sm text-[#A8D5B3]">Loading paper portfolio...</Text>
+			<SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+				<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+					<Spinner />
+					<Text style={{ marginTop: 12, fontSize: 14, color: theme.colors.text.secondary }}>Loading paper portfolio...</Text>
 				</View>
 			</SafeAreaView>
 		);
@@ -353,38 +370,52 @@ export default function PortfolioDetailScreen() {
 
 	if (!state.status?.hasDemoAccount) {
 		return (
-			<SafeAreaView className="flex-1 bg-[#050A05]">
-				<View className="flex-1 px-4 py-6">
-					<View className="rounded-[28px] border border-amber-300/30 bg-amber-500/10 px-5 py-5">
-					<Text className="text-lg font-semibold text-amber-200">Paper portfolio locked</Text>
-					<Text className="mt-2 text-sm leading-6 text-amber-100">
-						You can browse live market data before trading. To unlock paper portfolio and P&L,
-						complete KYC and activate your paper account.
-					</Text>
-						<Text className="mt-3 text-xs text-amber-100">
+			<SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+				<View style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 24 }}>
+					<View style={{
+						borderRadius: 28, borderWidth: 1,
+						borderColor: theme.colors.warning + '4D',
+						backgroundColor: theme.colors.warning + '1A',
+						paddingHorizontal: 20, paddingVertical: 20,
+					}}>
+						<Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.warning }}>Paper portfolio locked</Text>
+						<Text style={{ marginTop: 8, fontSize: 14, lineHeight: 22, color: theme.colors.warning }}>
+							You can browse live market data before trading. To unlock paper portfolio and P&L,
+							complete KYC and activate your paper account.
+						</Text>
+						<Text style={{ marginTop: 12, fontSize: 12, color: theme.colors.warning }}>
 							KYC: {state.status?.kycStatus || 'not_started'} · Account:{' '}
 							{state.status?.accountType || 'market_data_only'}
 						</Text>
 
-						<View className="mt-5 flex-row gap-x-3">
+						<View style={{ marginTop: 20, flexDirection: 'row', gap: 12 }}>
 							<Pressable
-								className="rounded-full border border-white/20 bg-white/5 px-4 py-2"
+								style={{
+									borderRadius: 999, borderWidth: 1,
+									borderColor: theme.colors.border.secondary,
+									backgroundColor: theme.colors.surface.primary,
+									paddingHorizontal: 16, paddingVertical: 8,
+								}}
 								onPress={() => router.push('/kyc/start')}
 							>
-								<Text className="text-xs font-semibold text-[#E6F8EA]">Start KYC</Text>
+								<Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.text.primary }}>Start KYC</Text>
 							</Pressable>
 							{state.status?.canActivateDemo ? (
 								<Pressable
-									className="rounded-full bg-[#00D35A] px-4 py-2"
+									style={{
+										borderRadius: 999,
+										backgroundColor: theme.colors.accent.primary,
+										paddingHorizontal: 16, paddingVertical: 8,
+									}}
 									onPress={() => {
 										void activateDemo();
 									}}
 									disabled={activating}
 								>
 									{activating ? (
-										<Spinner color="#031108" size="small" />
+										<Spinner size="small" />
 									) : (
-										<Text className="text-xs font-semibold text-[#031108]">Activate Demo</Text>
+										<Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.text.inverse }}>Activate Demo</Text>
 									)}
 								</Pressable>
 							) : null}
@@ -395,13 +426,15 @@ export default function PortfolioDetailScreen() {
 		);
 	}
 
+	const pnlColor = totals.totalPnl >= 0 ? theme.colors.chart.bullish : theme.colors.chart.bearish;
+
 	return (
-		<SafeAreaView className="flex-1 bg-[#050A05]">
+		<SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
 			<FlatList
 				data={state.holdings?.holdings || []}
 				keyExtractor={(item) => item.id}
 				renderItem={({ item }) => <HoldingRow item={item} />}
-				className="flex-1"
+				style={{ flex: 1 }}
 				contentContainerStyle={{ paddingBottom: 32 }}
 				refreshControl={
 					<RefreshControl
@@ -409,54 +442,59 @@ export default function PortfolioDetailScreen() {
 						onRefresh={() => {
 							void loadPortfolio(true);
 						}}
-						tintColor="#00D35A"
+						tintColor={theme.colors.accent.primary}
 					/>
 				}
 				ListHeaderComponent={
-					<View className="px-4 pb-3 pt-4">
-						<View className="rounded-[28px] border border-emerald-400/15 bg-[#082013] px-5 py-5">
-							<Text className="text-xs uppercase tracking-[1.7px] text-[#6B9175]">
+					<View style={{ paddingHorizontal: 16, paddingBottom: 12, paddingTop: 16 }}>
+						<View style={{
+							borderRadius: 28, borderWidth: 1,
+							borderColor: theme.colors.border.accent,
+							backgroundColor: theme.colors.background.secondary,
+							paddingHorizontal: 20, paddingVertical: 20,
+						}}>
+							<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.7, textTransform: 'uppercase', color: theme.colors.text.tertiary }}>
 								Demo Portfolio
 							</Text>
-							<Text className="mt-3 text-[34px] font-bold tracking-tight text-[#E6F8EA]">
+							<Text style={{ marginTop: 12, fontSize: 34, fontWeight: 'bold', letterSpacing: -0.5, color: theme.colors.text.primary }}>
 								{formatCurrency(totals.totalValue)}
 							</Text>
-							<View className="mt-4 flex-row items-center gap-x-2">
+							<View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
 								<Text
-									className={
-										totals.totalPnl >= 0
-											? 'text-base font-semibold text-emerald-300'
-											: 'text-base font-semibold text-rose-300'
-									}
+									style={{
+										fontSize: 16,
+										fontWeight: '600',
+										color: pnlColor,
+									}}
 								>
 									{formatCurrency(totals.totalPnl)}
 								</Text>
 								<AnimatedPnlBadge pnlPercent={totals.totalPnlPercent} />
 							</View>
 
-							<View className="mt-5 flex-row gap-x-3">
-								<View className="flex-1 rounded-2xl bg-white/5 px-4 py-3">
-									<Text className="text-xs uppercase tracking-[1.4px] text-[#6B9175]">
+							<View style={{ marginTop: 20, flexDirection: 'row', gap: 12 }}>
+								<View style={{ flex: 1, borderRadius: 16, backgroundColor: theme.colors.surface.primary, paddingHorizontal: 16, paddingVertical: 12 }}>
+									<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: theme.colors.text.tertiary }}>
 										Cash
 									</Text>
-									<Text className="mt-2 text-lg font-semibold text-[#E6F8EA]">
+									<Text style={{ marginTop: 8, fontSize: 18, fontWeight: '600', color: theme.colors.text.primary }}>
 										{formatCurrency(totals.cash)}
 									</Text>
 								</View>
-								<View className="flex-1 rounded-2xl bg-white/5 px-4 py-3">
-									<Text className="text-xs uppercase tracking-[1.4px] text-[#6B9175]">
+								<View style={{ flex: 1, borderRadius: 16, backgroundColor: theme.colors.surface.primary, paddingHorizontal: 16, paddingVertical: 12 }}>
+									<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: theme.colors.text.tertiary }}>
 										Holdings
 									</Text>
-									<Text className="mt-2 text-lg font-semibold text-[#E6F8EA]">
+									<Text style={{ marginTop: 8, fontSize: 18, fontWeight: '600', color: theme.colors.text.primary }}>
 										{formatCurrency(totals.holdingsValue)}
 									</Text>
 								</View>
 							</View>
 						</View>
 
-						<View className="mt-4 flex-row items-center justify-between">
-							<Text className="text-lg font-semibold text-[#E6F8EA]">Open Positions</Text>
-							<Text className="text-xs text-[#6B9175]">
+						<View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+							<Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text.primary }}>Open Positions</Text>
+							<Text style={{ fontSize: 12, color: theme.colors.text.tertiary }}>
 								{lastUpdatedAt
 									? `${connectionState} · ${formatRelativeTime(lastUpdatedAt)}`
 									: connectionState}
@@ -464,25 +502,39 @@ export default function PortfolioDetailScreen() {
 						</View>
 
 						{error ? (
-							<View className="mt-3 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3">
-								<Text className="text-sm text-rose-200">{error}</Text>
+							<View style={{
+								marginTop: 12, borderRadius: 16, borderWidth: 1,
+								borderColor: theme.colors.error + '33',
+								backgroundColor: theme.colors.error + '1A',
+								paddingHorizontal: 16, paddingVertical: 12,
+							}}>
+								<Text style={{ fontSize: 14, color: theme.colors.error }}>{error}</Text>
 							</View>
 						) : null}
 					</View>
 				}
 				ListEmptyComponent={
-					<View className="mx-4 mt-2 rounded-3xl border border-dashed border-emerald-400/20 bg-[#07140b] px-5 py-8">
-						<Text className="text-center text-lg font-semibold text-[#E6F8EA]">
+					<View style={{
+						marginHorizontal: 16, marginTop: 8, borderRadius: 24, borderWidth: 1, borderStyle: 'dashed',
+						borderColor: theme.colors.border.accent,
+						backgroundColor: theme.colors.surface.primary,
+						paddingHorizontal: 20, paddingVertical: 32,
+					}}>
+						<Text style={{ textAlign: 'center', fontSize: 18, fontWeight: '600', color: theme.colors.text.primary }}>
 							No positions yet
 						</Text>
-						<Text className="mt-2 text-center text-sm leading-6 text-[#A8D5B3]">
+						<Text style={{ marginTop: 8, textAlign: 'center', fontSize: 14, lineHeight: 22, color: theme.colors.text.secondary }}>
 							Your paper wallet is active. Place a simulated order to see live market P&L here.
 						</Text>
 						<Pressable
-							className="mt-5 self-center rounded-full bg-[#00D35A] px-5 py-3"
+							style={{
+								marginTop: 20, alignSelf: 'center', borderRadius: 999,
+								backgroundColor: theme.colors.accent.primary,
+								paddingHorizontal: 20, paddingVertical: 12,
+							}}
 							onPress={() => router.push('/orders/order-form')}
 						>
-							<Text className="font-semibold text-[#031108]">Place paper order</Text>
+							<Text style={{ fontWeight: '600', color: theme.colors.text.inverse }}>Place paper order</Text>
 						</Pressable>
 					</View>
 				}

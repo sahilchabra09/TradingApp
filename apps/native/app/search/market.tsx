@@ -11,12 +11,13 @@ import { useAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
 import { getPaperMarketData, type PaperMarketData } from '@/lib/paper-api';
 import { formatCurrency, formatRelativeTime } from '@/lib/formatters';
-import { usePaperMarketStream, useStableToken } from '@/lib/hooks';
+import { usePaperMarketStream, useStableToken, useTheme } from '@/lib/hooks';
 import { Spinner } from '@/components/Spinner';
 
 const toNumber = (value: string | undefined) => Number(value || 0);
 
 export default function MarketSearchScreen() {
+	const theme = useTheme();
 	const { getToken, isSignedIn } = useAuth();
 	const stableGetToken = useStableToken(getToken);
 	const [symbol, setSymbol] = useState('AAPL');
@@ -87,36 +88,54 @@ export default function MarketSearchScreen() {
 	});
 
 	return (
-		<SafeAreaView className="flex-1 bg-[#050A05]">
-			<ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
-				<View className="px-4 pb-6 pt-4">
-					<Text className="text-3xl font-bold tracking-tight text-[#E6F8EA]">
+		<SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+			<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }}>
+				<View style={{ paddingHorizontal: 16, paddingBottom: 24, paddingTop: 16 }}>
+					<Text style={{ fontSize: 30, fontWeight: 'bold', letterSpacing: -0.5, color: theme.colors.text.primary }}>
 						Market Search
 					</Text>
-					<Text className="mt-2 text-sm leading-6 text-[#A8D5B3]">
+					<Text style={{ marginTop: 8, fontSize: 14, lineHeight: 22, color: theme.colors.text.secondary }}>
 						Look up a live Alpaca snapshot using symbols like AAPL, TSLA, SPY, and QQQ.
 					</Text>
 
-					<View className="mt-5 rounded-[28px] border border-white/8 bg-[#07140b] px-4 py-4">
-						<Text className="text-xs uppercase tracking-[1.5px] text-[#6B9175]">Symbol</Text>
+					<View style={{
+						marginTop: 20, borderRadius: 28, borderWidth: 1,
+						borderColor: theme.colors.border.primary,
+						backgroundColor: theme.colors.surface.primary,
+						paddingHorizontal: 16, paddingVertical: 16,
+					}}>
+						<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', color: theme.colors.text.tertiary }}>
+							Symbol
+						</Text>
 						<TextInput
-							className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-lg font-semibold text-[#E6F8EA]"
+							style={{
+								marginTop: 12, borderRadius: 16, borderWidth: 1,
+								borderColor: theme.colors.border.primary,
+								backgroundColor: theme.colors.surface.glass,
+								paddingHorizontal: 16, paddingVertical: 16,
+								fontSize: 18, fontWeight: '600', color: theme.colors.text.primary,
+							}}
 							value={symbol}
 							onChangeText={(value) => setSymbol(value.toUpperCase())}
 							placeholder="AAPL"
-							placeholderTextColor="#6B9175"
+							placeholderTextColor={theme.colors.text.tertiary}
 							autoCapitalize="characters"
 							autoCorrect={false}
 						/>
 					</View>
 
-					<View className="mt-5 rounded-[28px] border border-emerald-400/15 bg-[#082013] px-5 py-5">
-						<View className="flex-row items-center justify-between">
-							<Text className="text-sm font-semibold text-[#E6F8EA]">Live snapshot</Text>
+					<View style={{
+						marginTop: 20, borderRadius: 28, borderWidth: 1,
+						borderColor: theme.colors.border.accent,
+						backgroundColor: theme.colors.background.secondary,
+						paddingHorizontal: 20, paddingVertical: 20,
+					}}>
+						<View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+							<Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text.primary }}>Live snapshot</Text>
 							{isLoading ? (
-								<Spinner color="#00D35A" />
+								<Spinner />
 							) : (
-								<Text className="text-xs text-[#6B9175]">
+								<Text style={{ fontSize: 12, color: theme.colors.text.tertiary }}>
 									{lastMessageAt
 										? `${connectionState} · ${formatRelativeTime(lastMessageAt)}`
 										: connectionState}
@@ -124,16 +143,20 @@ export default function MarketSearchScreen() {
 							)}
 						</View>
 
-						<Text className="mt-4 text-4xl font-bold tracking-tight text-[#E6F8EA]">
+						<Text style={{ marginTop: 16, fontSize: 36, fontWeight: 'bold', letterSpacing: -0.5, color: theme.colors.text.primary }}>
 							{data ? formatCurrency(toNumber(data.lastPrice)) : '--'}
 						</Text>
-						<Text className="mt-2 text-sm text-[#A8D5B3]">
+						<Text style={{ marginTop: 8, fontSize: 14, color: theme.colors.text.secondary }}>
 							{data ? `${data.symbol} · ${data.exchange}` : 'Enter a supported symbol'}
 						</Text>
 
 						{data ? (
-							<View className="mt-5 rounded-2xl bg-white/5 px-4 py-3">
-								<Text className="text-xs text-[#6B9175]">
+							<View style={{
+								marginTop: 20, borderRadius: 16,
+								backgroundColor: theme.colors.surface.primary,
+								paddingHorizontal: 16, paddingVertical: 12,
+							}}>
+								<Text style={{ fontSize: 12, color: theme.colors.text.tertiary }}>
 									ID {data.instrumentId} · Source {data.lastPriceSource} · Feed{' '}
 									{data.marketDataFeed}
 								</Text>
@@ -142,14 +165,23 @@ export default function MarketSearchScreen() {
 					</View>
 
 					{error ? (
-						<View className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3">
-							<Text className="text-sm text-rose-200">{error}</Text>
+						<View style={{
+							marginTop: 20, borderRadius: 16, borderWidth: 1,
+							borderColor: theme.colors.error + '33',
+							backgroundColor: theme.colors.error + '1A',
+							paddingHorizontal: 16, paddingVertical: 12,
+						}}>
+							<Text style={{ fontSize: 14, color: theme.colors.error }}>{error}</Text>
 						</View>
 					) : null}
 
-					<View className="mt-6 gap-y-3">
+					<View style={{ marginTop: 24, gap: 12 }}>
 						<Pressable
-							className="items-center rounded-full bg-[#00D35A] px-5 py-4"
+							style={{
+								alignItems: 'center', borderRadius: 999,
+								backgroundColor: theme.colors.accent.primary,
+								paddingHorizontal: 20, paddingVertical: 16,
+							}}
 							onPress={() =>
 								router.push({
 									pathname: '/orders/order-form',
@@ -157,15 +189,20 @@ export default function MarketSearchScreen() {
 								})
 							}
 						>
-							<Text className="text-base font-semibold text-[#031108]">Trade this symbol</Text>
+							<Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text.inverse }}>Trade this symbol</Text>
 						</Pressable>
 						<Pressable
-							className="items-center rounded-full border border-white/10 bg-white/5 px-5 py-4"
+							style={{
+								alignItems: 'center', borderRadius: 999, borderWidth: 1,
+								borderColor: theme.colors.border.primary,
+								backgroundColor: theme.colors.surface.primary,
+								paddingHorizontal: 20, paddingVertical: 16,
+							}}
 							onPress={() => {
 								void refreshSnapshot();
 							}}
 						>
-							<Text className="text-base font-semibold text-[#E6F8EA]">Refresh quote</Text>
+							<Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text.primary }}>Refresh quote</Text>
 						</Pressable>
 					</View>
 				</View>

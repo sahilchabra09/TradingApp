@@ -4,17 +4,19 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Animated, Keyboard } from 'react-native';
-import { useColorScheme as useNativeColorScheme } from 'react-native';
-import { lightTheme, darkTheme, type Theme } from './theme';
+import type { Theme } from './theme';
+import { useAppTheme } from './ThemeContext';
 import type { PaperMarketData } from './paper-api';
 import type { NewsArticle } from './news-api';
 
 /**
- * Hook to get the current theme
+ * Hook to get the current theme.
+ * Now backed by ThemeContext so it responds to the user's theme choice
+ * (Obsidian / Ivory / Midnight) rather than the OS colour scheme.
  */
 export const useTheme = (): Theme => {
-  const colorScheme = useNativeColorScheme();
-  return colorScheme === 'dark' ? darkTheme : lightTheme;
+  const { theme } = useAppTheme();
+  return theme;
 };
 
 /**

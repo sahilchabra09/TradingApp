@@ -1,6 +1,5 @@
 /**
- * Input Component
- * Customizable text input with label and error states
+ * Input Component — Text input with label and error states
  */
 
 import React, { useState } from 'react';
@@ -8,10 +7,8 @@ import {
   View,
   TextInput,
   Text,
-  StyleSheet,
   ViewStyle,
   TextStyle,
-  TouchableOpacity,
 } from 'react-native';
 import { useTheme } from '@/lib/hooks';
 
@@ -67,7 +64,7 @@ export const Input: React.FC<InputProps> = ({
       ? theme.colors.error
       : isFocused
       ? theme.colors.accent.primary
-      : theme.colors.surface.elevated,
+      : theme.colors.border.primary,
     paddingHorizontal: theme.spacing.base,
     minHeight: multiline ? 100 : theme.layout.input.height,
   };
@@ -95,10 +92,12 @@ export const Input: React.FC<InputProps> = ({
   return (
     <View style={[containerStyle, style]}>
       {label && <Text style={labelStyle}>{label}</Text>}
-      
+
       <View style={inputContainerStyle}>
-        {leftIcon && <View style={{ marginRight: theme.spacing.sm }}>{leftIcon}</View>}
-        
+        {leftIcon && (
+          <View style={{ marginRight: theme.spacing.sm }}>{leftIcon}</View>
+        )}
+
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -115,13 +114,13 @@ export const Input: React.FC<InputProps> = ({
           onBlur={() => setIsFocused(false)}
           style={inputStyle}
         />
-        
-        {rightIcon && <View style={{ marginLeft: theme.spacing.sm }}>{rightIcon}</View>}
+
+        {rightIcon && (
+          <View style={{ marginLeft: theme.spacing.sm }}>{rightIcon}</View>
+        )}
       </View>
-      
+
       {error && <Text style={errorStyle}>{error}</Text>}
     </View>
   );
 };
-
-const styles = StyleSheet.create({});

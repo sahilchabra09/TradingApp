@@ -13,7 +13,7 @@ export default function DepositSuccessScreen() {
   const theme = useTheme();
 
   return (
-    <LinearGradient colors={['#000000', '#0a3d2e', '#000000']} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
+    <LinearGradient colors={theme.colors.background.gradient as [string, string, string]} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', padding: 32 }} edges={['top', 'bottom']}>
         <View style={{ alignItems: 'center', marginBottom: 24 }}>
           <Ionicons name="checkmark-circle" size={100} color={theme.colors.success} />

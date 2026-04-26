@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { useTheme } from '@/lib/hooks';
+import { useAppTheme } from '@/lib/ThemeContext';
 import { useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -16,7 +16,7 @@ const QUICK_SYMBOLS = ['AAPL', 'TSLA', 'SPY', 'QQQ'] as const;
 const toNumber = (value: string | undefined) => Number(value || 0);
 
 export default function TradeScreen() {
-	const theme = useTheme();
+	const { theme } = useAppTheme();
 	const router = useRouter();
 	const { getToken, isSignedIn } = useAuth();
 	const stableGetToken = useStableToken(getToken);
@@ -26,9 +26,7 @@ export default function TradeScreen() {
 	const [error, setError] = useState<string | null>(null);
 
 	const loadQuote = useCallback(async () => {
-		if (!isSignedIn || !selectedSymbol) {
-			return;
-		}
+		if (!isSignedIn || !selectedSymbol) return;
 
 		try {
 			setIsLoading(true);
@@ -48,11 +46,18 @@ export default function TradeScreen() {
 	}, [loadQuote]);
 
 	return (
-		<LinearGradient colors={['#000000', '#0a3d2e', '#000000']} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
+		<LinearGradient
+			colors={theme.colors.background.gradient as [string, string, string]}
+			locations={[0, 0.5, 1]}
+			style={{ flex: 1 }}
+		>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-				<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-					<Text style={{ fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 16 }}>Quick Trade</Text>
+				<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+					<Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text.primary, marginBottom: 16, letterSpacing: -0.5 }}>
+						Quick Trade
+					</Text>
 
+					{/* Symbol chips */}
 					<View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
 						{QUICK_SYMBOLS.map((symbol) => (
 							<TouchableOpacity
@@ -63,14 +68,23 @@ export default function TradeScreen() {
 									paddingVertical: 8,
 									borderRadius: 999,
 									backgroundColor:
-										selectedSymbol === symbol ? theme.colors.accent.primary : 'rgba(255,255,255,0.08)',
+										selectedSymbol === symbol
+											? theme.colors.accent.primary
+											: theme.colors.surface.secondary,
 									marginRight: 8,
 									marginBottom: 8,
+									borderWidth: 1,
+									borderColor:
+										selectedSymbol === symbol
+											? theme.colors.accent.primary
+											: theme.colors.border.primary,
 								}}
 							>
 								<Text
 									style={{
-										color: selectedSymbol === symbol ? '#031108' : '#FFFFFF',
+										color: selectedSymbol === symbol
+											? theme.colors.text.inverse
+											: theme.colors.text.primary,
 										fontSize: 13,
 										fontWeight: '700',
 									}}
@@ -81,10 +95,11 @@ export default function TradeScreen() {
 						))}
 					</View>
 
+					{/* Quote card */}
 					<Card style={{ marginBottom: 16 }}>
 						{isLoading ? (
 							<View style={{ alignItems: 'center', paddingVertical: 8 }}>
-								<Spinner color={theme.colors.accent.primary} />
+								<Spinner />
 								<Text style={{ color: theme.colors.text.secondary, marginTop: 10 }}>Loading live quote...</Text>
 							</View>
 						) : error ? (
@@ -92,7 +107,7 @@ export default function TradeScreen() {
 						) : (
 							<>
 								<Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 8 }}>Selected Asset</Text>
-								<Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: 'bold' }}>
+								<Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700' }}>
 									{quote?.symbol || selectedSymbol} {quote?.instrumentName ? `- ${quote.instrumentName}` : ''}
 								</Text>
 								<Text style={{ color: theme.colors.text.primary, fontSize: 17, marginTop: 4 }}>

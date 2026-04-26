@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Spinner } from '@/components/Spinner';
+import { useAppTheme } from '@/lib/ThemeContext';
 import {
 	getPaperBatchMarketData,
 	searchPaperAssets,
@@ -24,29 +25,18 @@ import { useStableToken } from '@/lib/hooks';
 // ─── Stock universe (popular watchlist) ───────────────────────────────────────
 
 const MARKET_SYMBOLS = [
-	// Mega-cap tech
 	'AAPL', 'MSFT', 'NVDA', 'META', 'AMZN', 'GOOGL', 'TSLA', 'AVGO',
-	// Mid-cap tech
 	'AMD', 'NFLX', 'ORCL', 'CRM', 'ADBE', 'INTC', 'CSCO', 'QCOM', 'TXN', 'IBM',
-	// Finance
 	'JPM', 'V', 'MA', 'BAC', 'WFC', 'GS', 'MS', 'C', 'PYPL',
-	// Healthcare
 	'UNH', 'JNJ', 'LLY', 'ABBV', 'MRK', 'PFE',
-	// Consumer
 	'WMT', 'PG', 'KO', 'PEP', 'MCD', 'SBUX', 'NKE', 'DIS', 'COST', 'HD',
-	// Energy
 	'XOM', 'CVX',
-	// Industrials
 	'CAT', 'BA', 'HON', 'UPS', 'GE',
-	// Telecom
 	'T', 'VZ',
-	// Emerging tech
 	'PLTR', 'COIN', 'UBER', 'SPOT', 'SNAP',
-	// ETFs
 	'SPY', 'QQQ', 'IWM', 'GLD', 'VOO',
 ] as const;
 
-/** Fallback names when Alpaca instrumentName is null */
 const COMPANY_NAMES: Record<string, string> = {
 	AAPL: 'Apple Inc.', MSFT: 'Microsoft Corporation', NVDA: 'NVIDIA Corporation',
 	META: 'Meta Platforms Inc.', AMZN: 'Amazon.com Inc.', GOOGL: 'Alphabet Inc.',
@@ -76,13 +66,13 @@ function getCompanyName(quote: PaperMarketData): string {
 }
 
 const toNumber = (value: string) => Number(value || 0);
-
 const SEARCH_DEBOUNCE_MS = 300;
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function MarketsScreen() {
 	const router                   = useRouter();
+	const { theme }                = useAppTheme();
 	const { isSignedIn, getToken } = useAuth();
 	const stableGetToken           = useStableToken(getToken);
 
@@ -94,11 +84,8 @@ export default function MarketsScreen() {
 	const [searchResults, setSearchResults]     = useState<AssetInfo[]>([]);
 
 	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	// Whether the search bar has content
 	const isSearchMode = searchQuery.trim().length > 0;
 
-	// ── Popular stocks (initial load) ─────────────────────────────────────────
 	const loadQuotes = useCallback(async () => {
 		if (!isSignedIn) { setIsLoading(false); return; }
 		try {
@@ -116,7 +103,6 @@ export default function MarketsScreen() {
 
 	useEffect(() => { void loadQuotes(); }, [loadQuotes]);
 
-	// ── Debounced asset search ────────────────────────────────────────────────
 	useEffect(() => {
 		if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 
@@ -146,7 +132,6 @@ export default function MarketsScreen() {
 		};
 	}, [searchQuery, stableGetToken]);
 
-	// Popular list is shown as-is (already sorted alphabetically)
 	const visibleQuotes = useMemo(() => (isSearchMode ? [] : quotes), [quotes, isSearchMode]);
 
 	const navigateToAsset = (symbol: string) =>
@@ -154,63 +139,62 @@ export default function MarketsScreen() {
 
 	return (
 		<LinearGradient
-			colors={['#000000', '#0a1f18', '#000000']}
+			colors={theme.colors.background.gradient as [string, string, string]}
 			locations={[0, 0.5, 1]}
 			style={{ flex: 1 }}
 		>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-				{/* ── Search bar ──────────────────────────────────────────── */}
+				{/* Search bar */}
 				<View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
 					<View
 						style={{
 							flexDirection: 'row',
 							alignItems: 'center',
-							backgroundColor: 'rgba(255,255,255,0.06)',
+							backgroundColor: theme.colors.surface.secondary,
 							borderRadius: 16,
 							paddingHorizontal: 14,
 							height: 50,
 							borderWidth: 1,
-							borderColor: 'rgba(255,255,255,0.1)',
+							borderColor: theme.colors.border.primary,
 						}}
 					>
-						<Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 10 }} />
+						<Ionicons name="search" size={18} color={theme.colors.text.tertiary} style={{ marginRight: 10 }} />
 						<TextInput
 							value={searchQuery}
 							onChangeText={setSearchQuery}
 							placeholder="Search 10,000+ US stocks..."
-							placeholderTextColor="#4B5563"
-							style={{ flex: 1, color: '#FFFFFF', fontSize: 15 }}
+							placeholderTextColor={theme.colors.text.disabled}
+							style={{ flex: 1, color: theme.colors.text.primary, fontSize: 15 }}
 							autoCapitalize="none"
 							autoCorrect={false}
 						/>
 						{searchQuery.length > 0 && (
 							<TouchableOpacity onPress={() => setSearchQuery('')}>
-								<Ionicons name="close-circle" size={18} color="#6B7280" />
+								<Ionicons name="close-circle" size={18} color={theme.colors.text.tertiary} />
 							</TouchableOpacity>
 						)}
 					</View>
 				</View>
 
-				{/* ── Error banner ────────────────────────────────────────── */}
+				{/* Error banner */}
 				{error ? (
 					<View
 						style={{
 							marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 12,
-							backgroundColor: 'rgba(239,68,68,0.12)',
-							borderWidth: 1, borderColor: 'rgba(239,68,68,0.22)',
+							backgroundColor: `${theme.colors.error}15`,
+							borderWidth: 1, borderColor: `${theme.colors.error}30`,
 						}}
 					>
-						<Text style={{ color: '#FCA5A5', fontSize: 13 }}>{error}</Text>
+						<Text style={{ color: theme.colors.error, fontSize: 13 }}>{error}</Text>
 					</View>
 				) : null}
 
-				{/* ── Content ─────────────────────────────────────────────── */}
+				{/* Content */}
 				{isSearchMode ? (
-					/* ── Search results ──────────────────────────────────── */
 					isSearchLoading ? (
 						<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-							<Spinner color="#10B981" size="large" />
-							<Text style={{ color: '#6B7280', marginTop: 14, fontSize: 14 }}>
+							<Spinner size="large" />
+							<Text style={{ color: theme.colors.text.tertiary, marginTop: 14, fontSize: 14 }}>
 								Searching stocks...
 							</Text>
 						</View>
@@ -218,7 +202,7 @@ export default function MarketsScreen() {
 						<FlatList
 							data={searchResults}
 							keyExtractor={(item) => item.symbol}
-							contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 110 }}
+							contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 120 }}
 							showsVerticalScrollIndicator={false}
 							renderItem={({ item }) => (
 								<AssetSearchRow
@@ -230,11 +214,11 @@ export default function MarketsScreen() {
 								<View
 									style={{
 										padding: 24, alignItems: 'center',
-										backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16,
-										borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+										backgroundColor: theme.colors.surface.primary, borderRadius: 16,
+										borderWidth: 1, borderColor: theme.colors.border.primary,
 									}}
 								>
-									<Text style={{ color: '#6B7280' }}>
+									<Text style={{ color: theme.colors.text.tertiary }}>
 										No stocks match "{searchQuery.trim()}".
 									</Text>
 								</View>
@@ -242,11 +226,10 @@ export default function MarketsScreen() {
 						/>
 					)
 				) : (
-					/* ── Popular watchlist ───────────────────────────────── */
 					isLoading ? (
 						<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-							<Spinner color="#10B981" size="large" />
-							<Text style={{ color: '#6B7280', marginTop: 14, fontSize: 14 }}>
+							<Spinner size="large" />
+							<Text style={{ color: theme.colors.text.tertiary, marginTop: 14, fontSize: 14 }}>
 								Loading market data...
 							</Text>
 						</View>
@@ -254,7 +237,7 @@ export default function MarketsScreen() {
 						<FlatList
 							data={visibleQuotes}
 							keyExtractor={(item) => item.symbol}
-							contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 110 }}
+							contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 120 }}
 							showsVerticalScrollIndicator={false}
 							renderItem={({ item }) => (
 								<StockRow
@@ -266,11 +249,11 @@ export default function MarketsScreen() {
 								<View
 									style={{
 										padding: 24, alignItems: 'center',
-										backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16,
-										borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+										backgroundColor: theme.colors.surface.primary, borderRadius: 16,
+										borderWidth: 1, borderColor: theme.colors.border.primary,
 									}}
 								>
-									<Text style={{ color: '#6B7280' }}>No stocks found.</Text>
+									<Text style={{ color: theme.colors.text.tertiary }}>No stocks found.</Text>
 								</View>
 							}
 						/>
@@ -281,9 +264,10 @@ export default function MarketsScreen() {
 	);
 }
 
-// ─── Popular stock row (live price) ──────────────────────────────────────────
+// ─── Stock row ───────────────────────────────────────────────────────────────
 
 function StockRow({ quote, onPress }: { quote: PaperMarketData; onPress: () => void }) {
+	const { theme } = useAppTheme();
 	const companyName = getCompanyName(quote);
 	const price       = toNumber(quote.lastPrice);
 
@@ -292,9 +276,9 @@ function StockRow({ quote, onPress }: { quote: PaperMarketData; onPress: () => v
 			activeOpacity={0.82}
 			onPress={onPress}
 			style={{
-				backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16,
+				backgroundColor: theme.colors.surface.primary, borderRadius: 16,
 				paddingHorizontal: 16, paddingVertical: 14, marginBottom: 10,
-				borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+				borderWidth: 1, borderColor: theme.colors.border.primary,
 			}}
 		>
 			<View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -302,14 +286,14 @@ function StockRow({ quote, onPress }: { quote: PaperMarketData; onPress: () => v
 				<View
 					style={{
 						width: 46, height: 46, borderRadius: 12,
-						backgroundColor: 'rgba(16,185,129,0.08)',
-						borderWidth: 1, borderColor: 'rgba(16,185,129,0.18)',
+						backgroundColor: theme.colors.surface.secondary,
+						borderWidth: 1, borderColor: theme.colors.border.primary,
 						justifyContent: 'center', alignItems: 'center', marginRight: 14,
 					}}
 				>
 					<Text
 						style={{
-							color: '#10B981',
+							color: theme.colors.accent.primary,
 							fontSize: quote.symbol.length > 4 ? 9 : 11,
 							fontWeight: '700', letterSpacing: -0.3,
 						}}
@@ -322,22 +306,22 @@ function StockRow({ quote, onPress }: { quote: PaperMarketData; onPress: () => v
 				{/* Company name + exchange */}
 				<View style={{ flex: 1, marginRight: 8 }}>
 					<Text
-						style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', marginBottom: 3 }}
+						style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: '600', marginBottom: 3 }}
 						numberOfLines={1}
 					>
 						{companyName}
 					</Text>
-					<Text style={{ color: '#4B5563', fontSize: 12 }} numberOfLines={1}>
+					<Text style={{ color: theme.colors.text.disabled, fontSize: 12 }} numberOfLines={1}>
 						{quote.symbol} · {quote.exchange}
 					</Text>
 				</View>
 
 				{/* Price */}
 				<View style={{ alignItems: 'flex-end' }}>
-					<Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>
+					<Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '700' }}>
 						{formatCurrency(price)}
 					</Text>
-					<Text style={{ color: '#4B5563', fontSize: 11, marginTop: 2 }}>
+					<Text style={{ color: theme.colors.text.disabled, fontSize: 11, marginTop: 2 }}>
 						{quote.marketDataFeed}
 					</Text>
 				</View>
@@ -346,32 +330,33 @@ function StockRow({ quote, onPress }: { quote: PaperMarketData; onPress: () => v
 	);
 }
 
-// ─── Search result row (no price — navigate on tap) ──────────────────────────
+// ─── Search result row ───────────────────────────────────────────────────────
 
 function AssetSearchRow({ asset, onPress }: { asset: AssetInfo; onPress: () => void }) {
+	const { theme } = useAppTheme();
+
 	return (
 		<TouchableOpacity
 			activeOpacity={0.82}
 			onPress={onPress}
 			style={{
-				backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16,
+				backgroundColor: theme.colors.surface.primary, borderRadius: 16,
 				paddingHorizontal: 16, paddingVertical: 14, marginBottom: 10,
-				borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+				borderWidth: 1, borderColor: theme.colors.border.primary,
 			}}
 		>
 			<View style={{ flexDirection: 'row', alignItems: 'center' }}>
-				{/* Ticker badge */}
 				<View
 					style={{
 						width: 46, height: 46, borderRadius: 12,
-						backgroundColor: 'rgba(16,185,129,0.08)',
-						borderWidth: 1, borderColor: 'rgba(16,185,129,0.18)',
+						backgroundColor: theme.colors.surface.secondary,
+						borderWidth: 1, borderColor: theme.colors.border.primary,
 						justifyContent: 'center', alignItems: 'center', marginRight: 14,
 					}}
 				>
 					<Text
 						style={{
-							color: '#10B981',
+							color: theme.colors.accent.primary,
 							fontSize: asset.symbol.length > 4 ? 9 : 11,
 							fontWeight: '700', letterSpacing: -0.3,
 						}}
@@ -381,21 +366,19 @@ function AssetSearchRow({ asset, onPress }: { asset: AssetInfo; onPress: () => v
 					</Text>
 				</View>
 
-				{/* Company name + exchange */}
 				<View style={{ flex: 1, marginRight: 8 }}>
 					<Text
-						style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', marginBottom: 3 }}
+						style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: '600', marginBottom: 3 }}
 						numberOfLines={1}
 					>
 						{asset.name}
 					</Text>
-					<Text style={{ color: '#4B5563', fontSize: 12 }} numberOfLines={1}>
+					<Text style={{ color: theme.colors.text.disabled, fontSize: 12 }} numberOfLines={1}>
 						{asset.symbol} · {asset.exchange}
 					</Text>
 				</View>
 
-				{/* Chevron */}
-				<Ionicons name="chevron-forward" size={16} color="#4B5563" />
+				<Ionicons name="chevron-forward" size={16} color={theme.colors.text.disabled} />
 			</View>
 		</TouchableOpacity>
 	);

@@ -20,6 +20,7 @@ import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import type { TokenCache } from "@clerk/clerk-expo";
 import * as SplashScreen from "expo-splash-screen";
 import * as SecureStore from "expo-secure-store";
+import { AppThemeProvider, useAppTheme } from "@/lib/ThemeContext";
 
 WebBrowser.maybeCompleteAuthSession();
 void SplashScreen.preventAutoHideAsync();
@@ -63,6 +64,7 @@ const GUEST_SEGMENTS = new Set(["onboarding"]);
 
 const InitialLayout = () => {
 	const { isLoaded, isSignedIn } = useAuth();
+	const { theme } = useAppTheme();
 	const segments = useSegments();
 	const router = useRouter();
 
@@ -101,11 +103,11 @@ const InitialLayout = () => {
 					flex: 1,
 					alignItems: "center",
 					justifyContent: "center",
-					backgroundColor: "#000000",
+					backgroundColor: theme.colors.background.primary,
 				}}
 			>
-				<Spinner size="large" color="#10B981" />
-				<Text style={{ color: "#FFFFFF", marginTop: 12 }}>
+				<Spinner size="large" />
+				<Text style={{ color: theme.colors.text.secondary, marginTop: 12 }}>
 					Loading your session...
 				</Text>
 			</View>
@@ -117,7 +119,7 @@ const InitialLayout = () => {
 			screenOptions={{
 				headerShown: false,
 				contentStyle: {
-					backgroundColor: "#000000",
+					backgroundColor: theme.colors.background.primary,
 				},
 			}}
 		>
@@ -129,8 +131,8 @@ const InitialLayout = () => {
 					title: "Modal",
 					presentation: "modal",
 					headerShown: true,
-					headerStyle: { backgroundColor: "#000000" },
-					headerTintColor: "#FFFFFF",
+					headerStyle: { backgroundColor: theme.colors.background.primary },
+					headerTintColor: theme.colors.text.primary,
 					headerShadowVisible: false,
 				}}
 			/>
@@ -167,15 +169,27 @@ export default function RootLayout() {
 
 	return (
 		<ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-			<SafeAreaProvider>
-				<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-					<StatusBar style="light" />
-					<GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000000" }}>
-						<InitialLayout />
-					</GestureHandlerRootView>
-				</ThemeProvider>
-			</SafeAreaProvider>
+			<AppThemeProvider>
+				<SafeAreaProvider>
+					<ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+						<StatusBar style="light" />
+						<ThemedRootView />
+					</ThemeProvider>
+				</SafeAreaProvider>
+			</AppThemeProvider>
 		</ClerkProvider>
+	);
+}
+
+/** Inner component that can read the AppThemeProvider context. */
+function ThemedRootView() {
+	const { theme } = useAppTheme();
+	return (
+		<GestureHandlerRootView
+			style={{ flex: 1, backgroundColor: theme.colors.background.primary }}
+		>
+			<InitialLayout />
+		</GestureHandlerRootView>
 	);
 }
 

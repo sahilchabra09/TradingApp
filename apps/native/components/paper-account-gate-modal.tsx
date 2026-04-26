@@ -4,13 +4,14 @@ import { useAuth } from '@clerk/clerk-expo';
 import { router, usePathname } from 'expo-router';
 import { activatePaperAccount, getPaperStatus, type PaperStatus } from '@/lib/paper-api';
 import { Spinner } from '@/components/Spinner';
-import { useStableToken } from '@/lib/hooks';
+import { useStableToken, useTheme } from '@/lib/hooks';
 
 type Step = 'kyc_required' | 'unlock_demo' | null;
 
 export function PaperAccountGateModal() {
 	const { isSignedIn, getToken } = useAuth();
 	const stableGetToken = useStableToken(getToken);
+	const theme = useTheme();
 	const pathname = usePathname();
 	const [status, setStatus] = useState<PaperStatus | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
@@ -91,47 +92,70 @@ export function PaperAccountGateModal() {
 
 	return (
 		<Modal transparent animationType="fade" visible>
-			<View className="flex-1 items-center justify-center bg-black/65 px-6">
-				<View className="w-full max-w-[380px] rounded-3xl border border-emerald-400/30 bg-[#06140d] px-5 py-5">
-				<Text className="text-xs uppercase tracking-[1.6px] text-[#7BAA88]">
-					Paper Trading Setup
-				</Text>
-				<Text className="mt-2 text-2xl font-bold text-[#E6F8EA]">
-					{step === 'kyc_required'
-						? 'Complete KYC to unlock paper trading'
-						: 'Unlock your paper account'}
-				</Text>
-				<Text className="mt-3 text-sm leading-6 text-[#A8D5B3]">
-					{step === 'kyc_required'
-						? 'Finish KYC verification first. Then you can unlock your paper account with $100,000 virtual cash.'
-						: 'Activate your paper account to receive $100,000 virtual cash and start paper trading with live market prices. Once the ReTrading team approves your account, you will be able to trade for real.'}
-				</Text>
+			<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.65)', paddingHorizontal: 24 }}>
+				<View style={{
+					width: '100%',
+					maxWidth: 380,
+					borderRadius: 24,
+					borderWidth: 1,
+					borderColor: theme.colors.border.accent,
+					backgroundColor: theme.colors.background.secondary,
+					paddingHorizontal: 20,
+					paddingVertical: 20,
+				}}>
+					<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase', color: theme.colors.text.secondary }}>
+						Paper Trading Setup
+					</Text>
+					<Text style={{ marginTop: 8, fontSize: 24, fontWeight: 'bold', color: theme.colors.text.primary }}>
+						{step === 'kyc_required'
+							? 'Complete KYC to unlock paper trading'
+							: 'Unlock your paper account'}
+					</Text>
+					<Text style={{ marginTop: 12, fontSize: 14, lineHeight: 22, color: theme.colors.text.secondary }}>
+						{step === 'kyc_required'
+							? 'Finish KYC verification first. Then you can unlock your paper account with $100,000 virtual cash.'
+							: 'Activate your paper account to receive $100,000 virtual cash and start paper trading with live market prices. Once the ReTrading team approves your account, you will be able to trade for real.'}
+					</Text>
 
 					{error ? (
-						<View className="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2">
-							<Text className="text-xs text-rose-200">{error}</Text>
+						<View style={{
+							marginTop: 16, borderRadius: 12, borderWidth: 1,
+							borderColor: theme.colors.error + '4D',
+							backgroundColor: theme.colors.error + '1A',
+							paddingHorizontal: 12, paddingVertical: 8,
+						}}>
+							<Text style={{ fontSize: 12, color: theme.colors.error }}>{error}</Text>
 						</View>
 					) : null}
 
-					<View className="mt-5 flex-row gap-x-3">
+					<View style={{ marginTop: 20, flexDirection: 'row', gap: 12 }}>
 						<Pressable
-							className="flex-1 items-center rounded-full border border-white/20 bg-white/5 px-4 py-3"
+							style={{
+								flex: 1, alignItems: 'center', borderRadius: 999,
+								borderWidth: 1, borderColor: theme.colors.border.secondary,
+								backgroundColor: theme.colors.surface.primary,
+								paddingHorizontal: 16, paddingVertical: 12,
+							}}
 							onPress={() => setDismissedStep(step)}
 							disabled={isUnlocking}
 						>
-							<Text className="text-sm font-semibold text-[#E6F8EA]">Later</Text>
+							<Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text.primary }}>Later</Text>
 						</Pressable>
 						<Pressable
-							className="flex-1 items-center rounded-full bg-[#00D35A] px-4 py-3"
+							style={{
+								flex: 1, alignItems: 'center', borderRadius: 999,
+								backgroundColor: theme.colors.accent.primary,
+								paddingHorizontal: 16, paddingVertical: 12,
+							}}
 							onPress={() => {
 								void handlePrimary();
 							}}
 							disabled={isUnlocking || isLoading}
 						>
 							{isUnlocking || isLoading ? (
-								<Spinner color="#031108" size="small" />
+								<Spinner size="small" />
 							) : (
-								<Text className="text-sm font-semibold text-[#031108]">
+								<Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text.inverse }}>
 									{step === 'kyc_required' ? 'Go to KYC' : 'Unlock Paper Trading'}
 								</Text>
 							)}

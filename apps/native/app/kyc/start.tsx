@@ -111,7 +111,7 @@ export default function KYCStartScreen() {
 
   return (
     <LinearGradient
-      colors={['#000000', '#0a3d2e', '#000000']}
+      colors={theme.colors.background.gradient as [string, string, string]}
       locations={[0, 0.5, 1]}
       style={{ flex: 1 }}
     >
@@ -242,7 +242,7 @@ export default function KYCStartScreen() {
 
           {creating && (
             <View style={{ alignItems: 'center', marginBottom: 16 }}>
-              <Spinner color={theme.colors.accent.primary} />
+              <Spinner />
             </View>
           )}
 

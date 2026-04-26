@@ -72,7 +72,7 @@ export default function OrdersHistoryScreen() {
 						>
 							<Text
 								style={{
-									color: filter === nextFilter ? '#FFFFFF' : theme.colors.text.secondary,
+									color: filter === nextFilter ? theme.colors.text.inverse : theme.colors.text.secondary,
 									fontSize: 13,
 									fontWeight: '600',
 									textTransform: 'capitalize',

@@ -105,11 +105,11 @@ export default function SignInScreen() {
   };
 
   return (
-    <LinearGradient colors={['#000000', '#051f1a', '#000000']} style={{ flex: 1 }}>
+    <LinearGradient colors={theme.colors.background.gradient as [string, string, string]} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }} showsVerticalScrollIndicator={false}>
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            <Text style={{ color: '#FFFFFF', fontSize: 32, fontWeight: 'bold', marginBottom: 12 }}>Welcome back</Text>
+            <Text style={{ color: theme.colors.text.primary, fontSize: 32, fontWeight: 'bold', marginBottom: 12 }}>Welcome back</Text>
             <Text style={{ color: theme.colors.text.secondary, fontSize: 15, marginBottom: 32 }}>
               Sign in to access your trading dashboard.
             </Text>
@@ -134,9 +134,9 @@ export default function SignInScreen() {
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 28 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: theme.colors.border.primary }} />
               <Text style={{ color: theme.colors.text.secondary, marginHorizontal: 12 }}>or sign in with email</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: theme.colors.border.primary }} />
             </View>
 
             <Input

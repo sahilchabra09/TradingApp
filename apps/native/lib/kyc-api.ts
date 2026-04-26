@@ -112,7 +112,7 @@ export const KYC_STATUS_CONFIG: Record<KycSessionStatus, {
 	},
 	approved: {
 		label: 'Verified',
-		color: '#10B981',
+		color: '#34C759',
 		emoji: '✅',
 		description: 'Your identity has been verified',
 	},

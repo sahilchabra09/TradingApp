@@ -54,7 +54,7 @@ export default function AccountDetailsScreen() {
   const isVerified = kycStatus.toLowerCase() === 'verified';
 
   return (
-    <LinearGradient colors={['#000000', '#0a3d2e', '#000000']} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
+    <LinearGradient colors={theme.colors.background.gradient as [string, string, string]} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
@@ -65,7 +65,7 @@ export default function AccountDetailsScreen() {
             />
           ) : (
             <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: theme.colors.accent.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Text style={{ color: '#00100B', fontSize: 40, fontWeight: 'bold' }}>{initials}</Text>
+              <Text style={{ color: theme.colors.text.inverse, fontSize: 40, fontWeight: 'bold' }}>{initials}</Text>
             </View>
           )}
           <Text style={{ color: theme.colors.text.primary, fontSize: 24, fontWeight: 'bold', marginBottom: 4 }}>{fullName}</Text>

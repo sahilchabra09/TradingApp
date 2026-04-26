@@ -85,24 +85,24 @@ export default function WalletBalancesScreen() {
 			<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
 				<View
 					style={{
-						backgroundColor: 'rgba(16, 185, 129, 0.1)',
-						borderRadius: 24,
-						padding: 28,
-						marginBottom: 20,
-						borderWidth: 1.5,
-						borderColor: 'rgba(16, 185, 129, 0.3)',
+					backgroundColor: theme.colors.accent.glow,
+					borderRadius: 24,
+					padding: 28,
+					marginBottom: 20,
+					borderWidth: 1.5,
+					borderColor: theme.colors.border.accent,
 					}}
 				>
 					<View style={{ marginBottom: 24 }}>
 						<Ionicons name="wallet" size={40} color={theme.colors.accent.primary} />
 					</View>
-					<Text style={{ color: '#9CA3AF', fontSize: 13, letterSpacing: 0.5, marginBottom: 8, fontWeight: '600' }}>
+					<Text style={{ color: theme.colors.text.secondary, fontSize: 13, letterSpacing: 0.5, marginBottom: 8, fontWeight: '600' }}>
 						Total Balance
 					</Text>
 					{isLoading ? (
-						<Spinner color={theme.colors.accent.primary} />
+						<Spinner />
 					) : (
-						<Text style={{ color: '#FFFFFF', fontSize: 42, fontWeight: 'bold', letterSpacing: -0.5, marginBottom: 8 }}>
+						<Text style={{ color: theme.colors.text.primary, fontSize: 42, fontWeight: 'bold', letterSpacing: -0.5, marginBottom: 8 }}>
 							{state.portfolio ? formatCurrency(totals.total) : '--'}
 						</Text>
 					)}
@@ -119,15 +119,15 @@ export default function WalletBalancesScreen() {
 				{error ? (
 					<View
 						style={{
-							backgroundColor: 'rgba(239, 68, 68, 0.1)',
-							borderColor: 'rgba(239,68,68,0.25)',
+						backgroundColor: theme.colors.error + '1A',
+						borderColor: theme.colors.error + '40',
 							borderWidth: 1,
 							borderRadius: 12,
 							padding: 12,
 							marginBottom: 16,
 						}}
 					>
-						<Text style={{ color: '#FCA5A5' }}>{error}</Text>
+						<Text style={{ color: theme.colors.error }}>{error}</Text>
 					</View>
 				) : null}
 
@@ -138,12 +138,12 @@ export default function WalletBalancesScreen() {
 
 				<View
 					style={{
-						backgroundColor: 'rgba(255, 255, 255, 0.05)',
+						backgroundColor: theme.colors.surface.primary,
 						borderRadius: 16,
 						padding: 16,
 						marginBottom: 12,
 						borderWidth: 1,
-						borderColor: 'rgba(255, 255, 255, 0.1)',
+						borderColor: theme.colors.border.primary,
 					}}
 				>
 					<Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 6 }}>Cash</Text>
@@ -154,12 +154,12 @@ export default function WalletBalancesScreen() {
 
 				<View
 					style={{
-						backgroundColor: 'rgba(255, 255, 255, 0.05)',
+						backgroundColor: theme.colors.surface.primary,
 						borderRadius: 16,
 						padding: 16,
 						marginBottom: 12,
 						borderWidth: 1,
-						borderColor: 'rgba(255, 255, 255, 0.1)',
+						borderColor: theme.colors.border.primary,
 					}}
 				>
 					<Text style={{ color: theme.colors.text.secondary, fontSize: 13, marginBottom: 6 }}>Holdings Value</Text>

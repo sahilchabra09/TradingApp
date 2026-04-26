@@ -7,7 +7,6 @@ import {
 	Modal,
 	Platform,
 	ScrollView,
-	StyleSheet,
 	Text,
 	TextInput,
 	TouchableOpacity,
@@ -20,6 +19,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useStableToken } from '@/lib/hooks';
+import type { Theme } from '@/lib/theme';
 import {
 	initResearch,
 	getResearchStatus,
@@ -81,7 +81,7 @@ export default function AIResearchScreen() {
 	// ── Refs ────────────────────────────────────────────────────────────────
 	const scrollRef = useRef<ScrollView>(null);
 	const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-	const historyAnim = useRef(new Animated.Value(320)).current; // panel starts off-screen right
+	const historyAnim = useRef(new Animated.Value(320)).current;
 
 	// ── Cleanup polling ──────────────────────────────────────────────────────
 	useEffect(() => () => {
@@ -248,7 +248,6 @@ export default function AIResearchScreen() {
 				setChatId(chatResult.chatId);
 
 				if (chatResult.isExisting) {
-					// Returning user — load their existing messages
 					setPhase('loading_messages');
 					setStatusText('Loading your research...');
 					const msgResult = await getChatMessages(chatResult.chatId, stableGetToken);
@@ -261,9 +260,6 @@ export default function AIResearchScreen() {
 					);
 					setPhase('ready');
 				} else {
-					// New chat — enter ready immediately, then silently fire the initial report.
-					// This avoids a multi-minute loading screen: the user sees the chat
-					// interface right away with an "Analyzing…" indicator.
 					setPhase('ready');
 					setMessages([]);
 					setIsSending(true);
@@ -346,7 +342,7 @@ export default function AIResearchScreen() {
 	// ─────────────────────────────────────────────────────────────────────────
 
 	return (
-		<LinearGradient colors={['#000000', '#011a0c', '#000000']} style={{ flex: 1 }}>
+		<LinearGradient colors={theme.colors.background.gradient as [string, string, string]} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 				<KeyboardAvoidingView
 					style={{ flex: 1 }}
@@ -354,43 +350,49 @@ export default function AIResearchScreen() {
 					keyboardVerticalOffset={0}
 				>
 					{/* ── Header ─────────────────────────────────────────────────────── */}
-					<View style={styles.header}>
-						<TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-							<Ionicons name="chevron-back" size={22} color="#34D399" />
+					<View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border.primary, gap: 8 }}>
+						<TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+							<Ionicons name="chevron-back" size={22} color={theme.colors.accent.primary} />
 						</TouchableOpacity>
 
 						{/* Stock picker pill */}
 						<TouchableOpacity
 							onPress={() => setDropdownOpen(true)}
-							style={styles.stockPill}
+							style={{
+								flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+								paddingVertical: 7, paddingHorizontal: 13, borderRadius: 20,
+								backgroundColor: theme.colors.accent.glow,
+								borderWidth: 1, borderColor: theme.colors.border.accent,
+							}}
 							activeOpacity={0.7}
 						>
-							<Ionicons name="sparkles" size={13} color="#34D399" />
-							<Text style={styles.stockPillText} numberOfLines={1}>
+							<Ionicons name="sparkles" size={13} color={theme.colors.accent.primary} />
+							<Text style={{ flex: 1, color: theme.colors.text.primary, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
 								{selectedSymbol || 'Select a stock'}
 							</Text>
-							<Ionicons name="chevron-down" size={13} color="#34D399" />
+							<Ionicons name="chevron-down" size={13} color={theme.colors.accent.primary} />
 						</TouchableOpacity>
 
 						{/* History / hamburger */}
-						<TouchableOpacity onPress={openHistory} style={styles.menuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-							<Ionicons name="menu-outline" size={24} color="#34D399" />
+						<TouchableOpacity onPress={openHistory} style={{ padding: 4 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+							<Ionicons name="menu-outline" size={24} color={theme.colors.accent.primary} />
 						</TouchableOpacity>
 					</View>
 
 					{/* ── Body ───────────────────────────────────────────────────────── */}
 					{phase === 'idle' ? (
-						<IdleState onSelectStock={() => setDropdownOpen(true)} />
+						<IdleState theme={theme} onSelectStock={() => setDropdownOpen(true)} />
 					) : phase === 'error' ? (
-						<View style={styles.centeredContainer}>
+						<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
 							<ErrorState
+								theme={theme}
 								message={error}
 								onRetry={() => selectedSymbol && startResearchFlow(selectedSymbol)}
 							/>
 						</View>
 					) : phase !== 'ready' ? (
-						<View style={styles.centeredContainer}>
-							<LoadingState statusText={statusText} phase={phase} />
+						<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+							<LoadingState theme={theme} statusText={statusText} phase={phase} />
 						</View>
 					) : (
 						<>
@@ -398,39 +400,45 @@ export default function AIResearchScreen() {
 							<ScrollView
 								ref={scrollRef}
 								style={{ flex: 1 }}
-								contentContainerStyle={styles.messageList}
+								contentContainerStyle={{ padding: 16, paddingBottom: 12 }}
 								showsVerticalScrollIndicator={false}
 								keyboardDismissMode="interactive"
 							>
 								{messages.length === 0 ? (
-									<View style={styles.emptyChat}>
-										<Ionicons name="document-text-outline" size={40} color="rgba(52,211,153,0.25)" />
-										<Text style={[styles.emptyChatText, { color: theme.colors.text.secondary }]}>
+									<View style={{ alignItems: 'center', paddingVertical: 48, gap: 12 }}>
+										<Ionicons name="document-text-outline" size={40} color={theme.colors.accent.glow} />
+										<Text style={{ color: theme.colors.text.secondary, fontSize: 14, textAlign: 'center' }}>
 											Generating your research report…
 										</Text>
 									</View>
 								) : (
-									messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
+									messages.map((msg) => <MessageBubble key={msg.id} message={msg} theme={theme} />)
 								)}
 
 								{isSending && (
-									<View style={styles.thinkingRow}>
-										<ActivityIndicator size="small" color="#34D399" />
-										<Text style={styles.thinkingText}>Analyzing…</Text>
+									<View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, gap: 8 }}>
+										<ActivityIndicator size="small" color={theme.colors.accent.primary} />
+										<Text style={{ color: theme.colors.text.disabled, fontSize: 13 }}>Analyzing…</Text>
 									</View>
 								)}
 							</ScrollView>
 
 							{/* Input bar */}
-							<View style={styles.inputBar}>
+							<View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 1, borderTopColor: theme.colors.border.primary, gap: 10 }}>
 								<TextInput
 									value={inputText}
 									onChangeText={setInputText}
 									placeholder="Ask a follow-up question…"
-									placeholderTextColor="rgba(255,255,255,0.28)"
+									placeholderTextColor={theme.colors.text.disabled}
 									multiline
 									maxLength={5000}
-									style={styles.input}
+									style={{
+										flex: 1, minHeight: 42, maxHeight: 120,
+										paddingHorizontal: 16, paddingVertical: 10, borderRadius: 21,
+										backgroundColor: theme.colors.surface.primary,
+										borderWidth: 1, borderColor: theme.colors.border.accent,
+										color: theme.colors.text.primary, fontSize: 15,
+									}}
 									editable={!isSending}
 									blurOnSubmit={false}
 									onSubmitEditing={handleSend}
@@ -438,15 +446,16 @@ export default function AIResearchScreen() {
 								<TouchableOpacity
 									onPress={handleSend}
 									disabled={!inputText.trim() || isSending}
-									style={[
-										styles.sendBtn,
-										{ backgroundColor: inputText.trim() && !isSending ? '#10B981' : 'rgba(16,185,129,0.12)' },
-									]}
+									style={{
+										width: 42, height: 42, borderRadius: 21,
+										alignItems: 'center', justifyContent: 'center',
+										backgroundColor: inputText.trim() && !isSending ? theme.colors.accent.primary : theme.colors.accent.glow,
+									}}
 								>
 									<Ionicons
 										name="send"
 										size={17}
-										color={inputText.trim() && !isSending ? '#FFFFFF' : 'rgba(52,211,153,0.35)'}
+										color={inputText.trim() && !isSending ? theme.colors.text.inverse : theme.colors.text.disabled}
 									/>
 								</TouchableOpacity>
 							</View>
@@ -462,19 +471,23 @@ export default function AIResearchScreen() {
 					onRequestClose={() => setDropdownOpen(false)}
 				>
 					<TouchableOpacity
-						style={styles.modalOverlay}
+						style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'flex-end' }}
 						activeOpacity={1}
 						onPress={() => setDropdownOpen(false)}
 					>
-						<View style={styles.dropdownSheet}>
-							<View style={styles.dropdownHandle} />
-							<Text style={styles.dropdownTitle}>Select a Stock</Text>
-							<Text style={styles.dropdownSubtitle}>Stocks with available AI research</Text>
+						<View style={{
+							backgroundColor: theme.colors.background.secondary,
+							borderTopLeftRadius: 22, borderTopRightRadius: 22,
+							paddingTop: 12, paddingBottom: 36,
+						}}>
+							<View style={{ alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: theme.colors.surface.elevated, marginBottom: 18 }} />
+							<Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: '700', paddingHorizontal: 20, marginBottom: 2 }}>Select a Stock</Text>
+							<Text style={{ color: theme.colors.text.disabled, fontSize: 13, paddingHorizontal: 20, marginBottom: 14 }}>Stocks with available AI research</Text>
 
 							{availableStocks.length === 0 ? (
-								<View style={styles.dropdownEmpty}>
-									<Ionicons name="search-outline" size={32} color="rgba(52,211,153,0.3)" style={{ marginBottom: 10 }} />
-									<Text style={styles.dropdownEmptyText}>
+								<View style={{ padding: 32, alignItems: 'center' }}>
+									<Ionicons name="search-outline" size={32} color={theme.colors.accent.glow} style={{ marginBottom: 10 }} />
+									<Text style={{ color: theme.colors.text.disabled, textAlign: 'center', fontSize: 13, lineHeight: 20 }}>
 										No research available yet.{'\n'}Open a stock page and tap "AI Research" to get started.
 									</Text>
 								</View>
@@ -486,22 +499,25 @@ export default function AIResearchScreen() {
 									renderItem={({ item }) => (
 										<TouchableOpacity
 											onPress={() => handleSelectStock(item.symbol)}
-											style={styles.dropdownRow}
+											style={{
+												flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 13,
+												borderBottomWidth: 1, borderBottomColor: theme.colors.border.primary, gap: 12,
+											}}
 											activeOpacity={0.7}
 										>
-											<View style={styles.symbolBadge}>
-												<Text style={styles.symbolBadgeText}>{item.symbol.slice(0, 4)}</Text>
+											<View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: theme.colors.accent.glow, alignItems: 'center', justifyContent: 'center' }}>
+												<Text style={{ color: theme.colors.accent.primary, fontWeight: '700', fontSize: 12 }}>{item.symbol.slice(0, 4)}</Text>
 											</View>
 											<View style={{ flex: 1 }}>
-												<Text style={styles.dropdownRowSymbol}>{item.symbol}</Text>
+												<Text style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: 15 }}>{item.symbol}</Text>
 												{item.lastUpdatedAt && (
-													<Text style={styles.dropdownRowDate}>
+													<Text style={{ color: theme.colors.text.disabled, fontSize: 12, marginTop: 1 }}>
 														Updated {formatRelativeDate(item.lastUpdatedAt)}
 													</Text>
 												)}
 											</View>
 											{selectedSymbol === item.symbol && (
-												<Ionicons name="checkmark-circle" size={20} color="#10B981" />
+												<Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
 											)}
 										</TouchableOpacity>
 									)}
@@ -513,32 +529,37 @@ export default function AIResearchScreen() {
 
 				{/* ── Chat History Panel ────────────────────────────────────────── */}
 				{historyOpen && (
-					<View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+					<View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="box-none">
 						{/* Dimmed overlay */}
 						<TouchableOpacity
-							style={styles.historyOverlay}
+							style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)' }}
 							activeOpacity={1}
 							onPress={closeHistory}
 						/>
 						{/* Sliding panel */}
 						<Animated.View
-							style={[styles.historyPanel, { transform: [{ translateX: historyAnim }] }]}
+							style={[{
+								position: 'absolute', right: 0, top: 0, bottom: 0, width: 300,
+								backgroundColor: theme.colors.background.primary,
+								borderLeftWidth: 1, borderLeftColor: theme.colors.border.accent,
+								shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 20,
+							}, { transform: [{ translateX: historyAnim }] }]}
 						>
 							<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'right']}>
 								{/* Panel header */}
-								<View style={styles.historyHeader}>
-									<Ionicons name="time-outline" size={18} color="#34D399" style={{ marginRight: 8 }} />
-									<Text style={styles.historyTitle}>Chat History</Text>
+								<View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border.primary }}>
+									<Ionicons name="time-outline" size={18} color={theme.colors.accent.primary} style={{ marginRight: 8 }} />
+									<Text style={{ flex: 1, color: theme.colors.text.primary, fontSize: 16, fontWeight: '700' }}>Chat History</Text>
 									<TouchableOpacity onPress={closeHistory} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-										<Ionicons name="close" size={22} color="rgba(255,255,255,0.45)" />
+										<Ionicons name="close" size={22} color={theme.colors.text.disabled} />
 									</TouchableOpacity>
 								</View>
 
 								{/* Chat list */}
 								{allChats.length === 0 ? (
-									<View style={styles.historyEmpty}>
-										<Ionicons name="chatbubble-outline" size={38} color="rgba(52,211,153,0.25)" style={{ marginBottom: 12 }} />
-										<Text style={styles.historyEmptyText}>
+									<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+										<Ionicons name="chatbubble-outline" size={38} color={theme.colors.accent.glow} style={{ marginBottom: 12 }} />
+										<Text style={{ color: theme.colors.text.disabled, textAlign: 'center', fontSize: 13, lineHeight: 20 }}>
 											No chats yet.{'\n'}Start a research session from any stock page.
 										</Text>
 									</View>
@@ -551,24 +572,27 @@ export default function AIResearchScreen() {
 											<TouchableOpacity
 												onPress={() => loadChatFromHistory(item)}
 												style={[
-													styles.historyRow,
-													chatId === item.chatId && styles.historyRowActive,
+													{
+														flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13,
+														borderBottomWidth: 1, borderBottomColor: theme.colors.surface.primary, gap: 10,
+													},
+													chatId === item.chatId && { backgroundColor: theme.colors.accent.glow },
 												]}
 												activeOpacity={0.7}
 											>
-												<View style={styles.historySymbolBadge}>
-													<Text style={styles.historySymbolText}>{item.symbol.slice(0, 4)}</Text>
+												<View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.accent.glow, alignItems: 'center', justifyContent: 'center' }}>
+													<Text style={{ color: theme.colors.accent.primary, fontWeight: '700', fontSize: 10 }}>{item.symbol.slice(0, 4)}</Text>
 												</View>
 												<View style={{ flex: 1 }}>
-													<Text style={styles.historyRowTitle} numberOfLines={1}>
+													<Text style={{ color: theme.colors.text.primary, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
 														{item.title || `${item.symbol} Research`}
 													</Text>
-													<Text style={styles.historyRowDate}>
+													<Text style={{ color: theme.colors.text.disabled, fontSize: 11, marginTop: 2 }}>
 														{formatRelativeDate(item.createdAt)}
 													</Text>
 												</View>
 												{chatId === item.chatId && (
-													<View style={styles.activeDot} />
+													<View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.accent.primary }} />
 												)}
 											</TouchableOpacity>
 										)}
@@ -585,25 +609,25 @@ export default function AIResearchScreen() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function IdleState({ onSelectStock }: { onSelectStock: () => void }) {
+function IdleState({ theme, onSelectStock }: { theme: Theme; onSelectStock: () => void }) {
 	return (
-		<View style={styles.centeredContainer}>
-			<View style={styles.idleIconWrap}>
-				<Ionicons name="sparkles" size={36} color="#34D399" />
+		<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+			<View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: theme.colors.accent.glow, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+				<Ionicons name="sparkles" size={36} color={theme.colors.accent.primary} />
 			</View>
-			<Text style={styles.idleTitle}>AI Research</Text>
-			<Text style={styles.idleSubtitle}>
+			<Text style={{ color: theme.colors.text.primary, fontSize: 22, fontWeight: '700', marginBottom: 10 }}>AI Research</Text>
+			<Text style={{ color: theme.colors.text.disabled, fontSize: 14, textAlign: 'center', lineHeight: 21, maxWidth: 280, marginBottom: 28 }}>
 				Select a stock to view a data-backed research report powered by AI.
 			</Text>
-			<TouchableOpacity onPress={onSelectStock} style={styles.idleBtn} activeOpacity={0.8}>
-				<Ionicons name="search" size={15} color="#FFFFFF" style={{ marginRight: 8 }} />
-				<Text style={styles.idleBtnText}>Browse Available Stocks</Text>
+			<TouchableOpacity onPress={onSelectStock} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14, backgroundColor: theme.colors.accent.primary }} activeOpacity={0.8}>
+				<Ionicons name="search" size={15} color={theme.colors.text.inverse} style={{ marginRight: 8 }} />
+				<Text style={{ color: theme.colors.text.inverse, fontWeight: '700', fontSize: 15 }}>Browse Available Stocks</Text>
 			</TouchableOpacity>
 		</View>
 	);
 }
 
-function LoadingState({ statusText, phase }: { statusText: string; phase: ScreenPhase }) {
+function LoadingState({ theme, statusText, phase }: { theme: Theme; statusText: string; phase: ScreenPhase }) {
 	const subtitles: Partial<Record<ScreenPhase, string>> = {
 		initializing: 'Setting up the knowledge base and collecting market data…',
 		processing: 'Analyzing pricing history, news articles, and market context…',
@@ -611,54 +635,62 @@ function LoadingState({ statusText, phase }: { statusText: string; phase: Screen
 		loading_messages: 'Loading your research report…',
 	};
 	return (
-		<View style={styles.loadingWrap}>
-			<View style={styles.loadingIconWrap}>
-				<Ionicons name="sparkles" size={32} color="#34D399" />
+		<View style={{ alignItems: 'center', gap: 4 }}>
+			<View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: theme.colors.accent.glow, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+				<Ionicons name="sparkles" size={32} color={theme.colors.accent.primary} />
 			</View>
-			<ActivityIndicator size="large" color="#34D399" style={{ marginBottom: 16 }} />
-			<Text style={styles.loadingLabel}>{statusText}</Text>
+			<ActivityIndicator size="large" color={theme.colors.accent.primary} style={{ marginBottom: 16 }} />
+			<Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 6 }}>{statusText}</Text>
 			{subtitles[phase] && (
-				<Text style={styles.loadingSubtitle}>{subtitles[phase]}</Text>
+				<Text style={{ color: theme.colors.text.disabled, fontSize: 13, textAlign: 'center', maxWidth: 280, lineHeight: 20 }}>{subtitles[phase]}</Text>
 			)}
 		</View>
 	);
 }
 
-function ErrorState({ message, onRetry }: { message: string | null; onRetry: () => void }) {
+function ErrorState({ theme, message, onRetry }: { theme: Theme; message: string | null; onRetry: () => void }) {
 	return (
-		<View style={styles.errorWrap}>
-			<View style={styles.errorIconWrap}>
-				<Ionicons name="warning-outline" size={30} color="#FCA5A5" />
+		<View style={{ alignItems: 'center', gap: 4 }}>
+			<View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: theme.colors.error + '1A', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+				<Ionicons name="warning-outline" size={30} color={theme.colors.error} />
 			</View>
-			<Text style={styles.errorTitle}>Something went wrong</Text>
-			<Text style={styles.errorMessage}>{message || 'An unexpected error occurred.'}</Text>
-			<TouchableOpacity onPress={onRetry} style={styles.retryBtn} activeOpacity={0.8}>
-				<Text style={styles.retryBtnText}>Try again</Text>
+			<Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '700', marginBottom: 6 }}>Something went wrong</Text>
+			<Text style={{ color: theme.colors.text.secondary, fontSize: 13, textAlign: 'center', maxWidth: 300, lineHeight: 20, marginBottom: 20 }}>{message || 'An unexpected error occurred.'}</Text>
+			<TouchableOpacity onPress={onRetry} style={{ paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12, backgroundColor: theme.colors.accent.glow, borderWidth: 1, borderColor: theme.colors.border.accent }} activeOpacity={0.8}>
+				<Text style={{ color: theme.colors.accent.primary, fontWeight: '600', fontSize: 15 }}>Try again</Text>
 			</TouchableOpacity>
 		</View>
 	);
 }
 
-function MessageBubble({ message }: { message: DisplayMessage }) {
+function MessageBubble({ message, theme }: { message: DisplayMessage; theme: Theme }) {
 	const isUser = message.role === 'user';
 
 	if (isUser) {
 		return (
-			<View style={styles.userBubbleWrap}>
-				<View style={styles.userBubble}>
-					<Text style={styles.userBubbleText}>{message.content}</Text>
+			<View style={{ alignSelf: 'flex-end', maxWidth: '82%', marginBottom: 10 }}>
+				<View style={{
+					paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18, borderTopRightRadius: 4,
+					backgroundColor: theme.colors.accent.glow,
+					borderWidth: 1, borderColor: theme.colors.border.accent,
+				}}>
+					<Text style={{ color: theme.colors.text.primary, fontSize: 14, lineHeight: 21 }}>{message.content}</Text>
 				</View>
 			</View>
 		);
 	}
 
 	return (
-		<View style={styles.assistantBubbleWrap}>
-			<View style={styles.assistantLabel}>
-				<Ionicons name="sparkles" size={11} color="#34D399" />
-				<Text style={styles.assistantLabelText}>AI Analyst</Text>
+		<View style={{ alignSelf: 'flex-start', maxWidth: '96%', marginBottom: 14 }}>
+			<View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+				<Ionicons name="sparkles" size={11} color={theme.colors.accent.primary} />
+				<Text style={{ color: theme.colors.accent.primary, fontSize: 11, fontWeight: '600' }}>AI Analyst</Text>
 			</View>
-			<View style={styles.assistantBubble}>
+			<View style={{
+				paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18, borderTopLeftRadius: 4,
+				backgroundColor: theme.colors.surface.primary,
+				borderWidth: 1, borderColor: theme.colors.border.primary,
+			}}>
 				<SimpleMarkdown>{message.content}</SimpleMarkdown>
 			</View>
 		</View>
@@ -710,323 +742,3 @@ function formatRelativeDate(iso: string): string {
 	if (days < 30) return `${days}d ago`;
 	return new Date(iso).toLocaleDateString();
 }
-
-
-// ─── Layout styles ────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-	// Header
-	header: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 14,
-		paddingVertical: 12,
-		borderBottomWidth: 1,
-		borderBottomColor: 'rgba(255,255,255,0.06)',
-		gap: 8,
-	},
-	backBtn: { padding: 4 },
-	menuBtn: { padding: 4 },
-	stockPill: {
-		flex: 1,
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 6,
-		paddingVertical: 7,
-		paddingHorizontal: 13,
-		borderRadius: 20,
-		backgroundColor: 'rgba(16,185,129,0.1)',
-		borderWidth: 1,
-		borderColor: 'rgba(16,185,129,0.22)',
-	},
-	stockPillText: {
-		flex: 1,
-		color: '#FFFFFF',
-		fontSize: 14,
-		fontWeight: '600',
-	},
-
-	// Shared container
-	centeredContainer: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		padding: 32,
-	},
-
-	// Idle state
-	idleIconWrap: {
-		width: 76,
-		height: 76,
-		borderRadius: 38,
-		backgroundColor: 'rgba(16,185,129,0.1)',
-		alignItems: 'center',
-		justifyContent: 'center',
-		marginBottom: 20,
-	},
-	idleTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '700', marginBottom: 10 },
-	idleSubtitle: {
-		color: 'rgba(255,255,255,0.45)',
-		fontSize: 14,
-		textAlign: 'center',
-		lineHeight: 21,
-		maxWidth: 280,
-		marginBottom: 28,
-	},
-	idleBtn: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 22,
-		paddingVertical: 13,
-		borderRadius: 14,
-		backgroundColor: '#10B981',
-	},
-	idleBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
-
-	// Loading state
-	loadingWrap: { alignItems: 'center', gap: 4 },
-	loadingIconWrap: {
-		width: 72,
-		height: 72,
-		borderRadius: 36,
-		backgroundColor: 'rgba(16,185,129,0.1)',
-		alignItems: 'center',
-		justifyContent: 'center',
-		marginBottom: 20,
-	},
-	loadingLabel: {
-		color: '#FFFFFF',
-		fontSize: 16,
-		fontWeight: '600',
-		textAlign: 'center',
-		marginBottom: 6,
-	},
-	loadingSubtitle: {
-		color: 'rgba(255,255,255,0.45)',
-		fontSize: 13,
-		textAlign: 'center',
-		maxWidth: 280,
-		lineHeight: 20,
-	},
-
-	// Error state
-	errorWrap: { alignItems: 'center', gap: 4 },
-	errorIconWrap: {
-		width: 68,
-		height: 68,
-		borderRadius: 34,
-		backgroundColor: 'rgba(239,68,68,0.1)',
-		alignItems: 'center',
-		justifyContent: 'center',
-		marginBottom: 16,
-	},
-	errorTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 6 },
-	errorMessage: {
-		color: 'rgba(255,255,255,0.5)',
-		fontSize: 13,
-		textAlign: 'center',
-		maxWidth: 300,
-		lineHeight: 20,
-		marginBottom: 20,
-	},
-	retryBtn: {
-		paddingHorizontal: 28,
-		paddingVertical: 12,
-		borderRadius: 12,
-		backgroundColor: 'rgba(16,185,129,0.15)',
-		borderWidth: 1,
-		borderColor: 'rgba(16,185,129,0.3)',
-	},
-	retryBtnText: { color: '#34D399', fontWeight: '600', fontSize: 15 },
-
-	// Message list
-	messageList: { padding: 16, paddingBottom: 12 },
-	emptyChat: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-	emptyChatText: { fontSize: 14, textAlign: 'center' },
-	thinkingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, gap: 8 },
-	thinkingText: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
-
-	// User bubble
-	userBubbleWrap: { alignSelf: 'flex-end', maxWidth: '82%', marginBottom: 10 },
-	userBubble: {
-		paddingHorizontal: 14,
-		paddingVertical: 10,
-		borderRadius: 18,
-		borderTopRightRadius: 4,
-		backgroundColor: 'rgba(16,185,129,0.18)',
-		borderWidth: 1,
-		borderColor: 'rgba(16,185,129,0.3)',
-	},
-	userBubbleText: { color: '#F3F4F6', fontSize: 14, lineHeight: 21 },
-
-	// Assistant bubble
-	assistantBubbleWrap: { alignSelf: 'flex-start', maxWidth: '96%', marginBottom: 14 },
-	assistantLabel: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 },
-	assistantLabelText: { color: '#34D399', fontSize: 11, fontWeight: '600' },
-	assistantBubble: {
-		paddingHorizontal: 14,
-		paddingVertical: 10,
-		borderRadius: 18,
-		borderTopLeftRadius: 4,
-		backgroundColor: 'rgba(255,255,255,0.04)',
-		borderWidth: 1,
-		borderColor: 'rgba(255,255,255,0.08)',
-	},
-
-	// Input bar
-	inputBar: {
-		flexDirection: 'row',
-		alignItems: 'flex-end',
-		paddingHorizontal: 14,
-		paddingVertical: 12,
-		borderTopWidth: 1,
-		borderTopColor: 'rgba(255,255,255,0.06)',
-		gap: 10,
-	},
-	input: {
-		flex: 1,
-		minHeight: 42,
-		maxHeight: 120,
-		paddingHorizontal: 16,
-		paddingVertical: 10,
-		borderRadius: 21,
-		backgroundColor: 'rgba(255,255,255,0.055)',
-		borderWidth: 1,
-		borderColor: 'rgba(16,185,129,0.2)',
-		color: '#FFFFFF',
-		fontSize: 15,
-	},
-	sendBtn: {
-		width: 42,
-		height: 42,
-		borderRadius: 21,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-
-	// Dropdown modal
-	modalOverlay: {
-		flex: 1,
-		backgroundColor: 'rgba(0,0,0,0.72)',
-		justifyContent: 'flex-end',
-	},
-	dropdownSheet: {
-		backgroundColor: '#011a0c',
-		borderTopLeftRadius: 22,
-		borderTopRightRadius: 22,
-		paddingTop: 12,
-		paddingBottom: 36,
-	},
-	dropdownHandle: {
-		alignSelf: 'center',
-		width: 36,
-		height: 4,
-		borderRadius: 2,
-		backgroundColor: 'rgba(255,255,255,0.15)',
-		marginBottom: 18,
-	},
-	dropdownTitle: {
-		color: '#FFFFFF',
-		fontSize: 17,
-		fontWeight: '700',
-		paddingHorizontal: 20,
-		marginBottom: 2,
-	},
-	dropdownSubtitle: {
-		color: 'rgba(255,255,255,0.4)',
-		fontSize: 13,
-		paddingHorizontal: 20,
-		marginBottom: 14,
-	},
-	dropdownEmpty: { padding: 32, alignItems: 'center' },
-	dropdownEmptyText: {
-		color: 'rgba(255,255,255,0.35)',
-		textAlign: 'center',
-		fontSize: 13,
-		lineHeight: 20,
-	},
-	dropdownRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 20,
-		paddingVertical: 13,
-		borderBottomWidth: 1,
-		borderBottomColor: 'rgba(255,255,255,0.05)',
-		gap: 12,
-	},
-	symbolBadge: {
-		width: 42,
-		height: 42,
-		borderRadius: 12,
-		backgroundColor: 'rgba(16,185,129,0.14)',
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	symbolBadgeText: { color: '#34D399', fontWeight: '700', fontSize: 12 },
-	dropdownRowSymbol: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
-	dropdownRowDate: { color: 'rgba(255,255,255,0.38)', fontSize: 12, marginTop: 1 },
-
-	// History panel
-	historyOverlay: {
-		...StyleSheet.absoluteFillObject,
-		backgroundColor: 'rgba(0,0,0,0.55)',
-	},
-	historyPanel: {
-		position: 'absolute',
-		right: 0,
-		top: 0,
-		bottom: 0,
-		width: 300,
-		backgroundColor: '#010e07',
-		borderLeftWidth: 1,
-		borderLeftColor: 'rgba(16,185,129,0.15)',
-		shadowColor: '#000',
-		shadowOffset: { width: -4, height: 0 },
-		shadowOpacity: 0.4,
-		shadowRadius: 12,
-		elevation: 20,
-	},
-	historyHeader: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 18,
-		paddingVertical: 16,
-		borderBottomWidth: 1,
-		borderBottomColor: 'rgba(255,255,255,0.06)',
-	},
-	historyTitle: { flex: 1, color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-	historyEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-	historyEmptyText: {
-		color: 'rgba(255,255,255,0.35)',
-		textAlign: 'center',
-		fontSize: 13,
-		lineHeight: 20,
-	},
-	historyRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 16,
-		paddingVertical: 13,
-		borderBottomWidth: 1,
-		borderBottomColor: 'rgba(255,255,255,0.04)',
-		gap: 10,
-	},
-	historyRowActive: { backgroundColor: 'rgba(16,185,129,0.08)' },
-	historySymbolBadge: {
-		width: 36,
-		height: 36,
-		borderRadius: 10,
-		backgroundColor: 'rgba(16,185,129,0.14)',
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	historySymbolText: { color: '#34D399', fontWeight: '700', fontSize: 10 },
-	historyRowTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
-	historyRowDate: { color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 2 },
-	activeDot: {
-		width: 7,
-		height: 7,
-		borderRadius: 4,
-		backgroundColor: '#10B981',
-	},
-});

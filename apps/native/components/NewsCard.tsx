@@ -11,6 +11,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NewsArticle } from '@/lib/news-api';
+import { useTheme } from '@/lib/hooks';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -46,53 +47,6 @@ function capitalise(s: string): string {
 	return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// ─── Symbol pill ──────────────────────────────────────────────────────────────
-
-function SymbolPill({ symbol }: { symbol: string }) {
-	return (
-		<View
-			style={{
-				paddingHorizontal: 7,
-				paddingVertical: 2,
-				borderRadius: 6,
-				backgroundColor: 'rgba(16,185,129,0.1)',
-				borderWidth: 1,
-				borderColor: 'rgba(16,185,129,0.2)',
-				marginRight: 4,
-			}}
-		>
-			<Text style={{ color: '#10B981', fontSize: 10, fontWeight: '700' }}>
-				{symbol}
-			</Text>
-		</View>
-	);
-}
-
-// ─── Live badge ───────────────────────────────────────────────────────────────
-
-function LiveBadge() {
-	return (
-		<View
-			style={{
-				flexDirection: 'row',
-				alignItems: 'center',
-				paddingHorizontal: 6,
-				paddingVertical: 2,
-				borderRadius: 6,
-				backgroundColor: 'rgba(239,68,68,0.12)',
-				borderWidth: 1,
-				borderColor: 'rgba(239,68,68,0.25)',
-				gap: 4,
-			}}
-		>
-			<View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#EF4444' }} />
-			<Text style={{ color: '#EF4444', fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>
-				LIVE
-			</Text>
-		</View>
-	);
-}
-
 // ─── Full card (news feed) ────────────────────────────────────────────────────
 
 type NewsCardProps = {
@@ -102,6 +56,8 @@ type NewsCardProps = {
 };
 
 export function NewsCard({ article, onPress, isLive = false }: NewsCardProps) {
+	const theme = useTheme();
+
 	const summary = article.summary
 		? stripHtml(article.summary)
 		: article.content
@@ -113,14 +69,14 @@ export function NewsCard({ article, onPress, isLive = false }: NewsCardProps) {
 			activeOpacity={0.82}
 			onPress={onPress}
 			style={{
-				backgroundColor: 'rgba(255,255,255,0.04)',
+				backgroundColor: theme.colors.surface.primary,
 				borderRadius: 16,
 				padding: 16,
 				marginBottom: 10,
 				borderWidth: 1,
 				borderColor: isLive
-					? 'rgba(239,68,68,0.2)'
-					: 'rgba(255,255,255,0.08)',
+					? theme.colors.error + '33'
+					: theme.colors.border.primary,
 			}}
 		>
 			{/* ── Top meta row ─────────────────────────────────── */}
@@ -133,18 +89,37 @@ export function NewsCard({ article, onPress, isLive = false }: NewsCardProps) {
 					flexWrap: 'wrap',
 				}}
 			>
-				{isLive && <LiveBadge />}
-				<Text style={{ color: '#6B7280', fontSize: 11 }}>
+				{isLive && (
+					<View
+						style={{
+							flexDirection: 'row',
+							alignItems: 'center',
+							paddingHorizontal: 6,
+							paddingVertical: 2,
+							borderRadius: 6,
+							backgroundColor: theme.colors.error + '1F',
+							borderWidth: 1,
+							borderColor: theme.colors.error + '40',
+							gap: 4,
+						}}
+					>
+						<View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: theme.colors.error }} />
+						<Text style={{ color: theme.colors.error, fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>
+							LIVE
+						</Text>
+					</View>
+				)}
+				<Text style={{ color: theme.colors.text.tertiary, fontSize: 11 }}>
 					{capitalise(article.source || 'news')}
 				</Text>
-				<Text style={{ color: '#374151', fontSize: 11 }}>·</Text>
-				<Text style={{ color: '#6B7280', fontSize: 11 }}>
+				<Text style={{ color: theme.colors.text.disabled, fontSize: 11 }}>·</Text>
+				<Text style={{ color: theme.colors.text.tertiary, fontSize: 11 }}>
 					{formatRelativeTime(article.created_at)}
 				</Text>
 				{article.author ? (
 					<>
-						<Text style={{ color: '#374151', fontSize: 11 }}>·</Text>
-						<Text style={{ color: '#6B7280', fontSize: 11 }} numberOfLines={1}>
+						<Text style={{ color: theme.colors.text.disabled, fontSize: 11 }}>·</Text>
+						<Text style={{ color: theme.colors.text.tertiary, fontSize: 11 }} numberOfLines={1}>
 							{article.author}
 						</Text>
 					</>
@@ -154,7 +129,7 @@ export function NewsCard({ article, onPress, isLive = false }: NewsCardProps) {
 			{/* ── Headline ─────────────────────────────────────── */}
 			<Text
 				style={{
-					color: '#FFFFFF',
+					color: theme.colors.text.primary,
 					fontSize: 15,
 					fontWeight: '600',
 					lineHeight: 22,
@@ -169,7 +144,7 @@ export function NewsCard({ article, onPress, isLive = false }: NewsCardProps) {
 			{summary ? (
 				<Text
 					style={{
-						color: '#9CA3AF',
+						color: theme.colors.text.secondary,
 						fontSize: 13,
 						lineHeight: 19,
 						marginBottom: 10,
@@ -186,15 +161,30 @@ export function NewsCard({ article, onPress, isLive = false }: NewsCardProps) {
 			>
 				<View style={{ flexDirection: 'row', flexWrap: 'wrap', flex: 1, gap: 4 }}>
 					{article.symbols.slice(0, 4).map((s) => (
-						<SymbolPill key={s} symbol={s} />
+						<View
+							key={s}
+							style={{
+								paddingHorizontal: 7,
+								paddingVertical: 2,
+								borderRadius: 6,
+								backgroundColor: theme.colors.accent.glow,
+								borderWidth: 1,
+								borderColor: theme.colors.border.accent,
+								marginRight: 4,
+							}}
+						>
+							<Text style={{ color: theme.colors.accent.primary, fontSize: 10, fontWeight: '700' }}>
+								{s}
+							</Text>
+						</View>
 					))}
 					{article.symbols.length > 4 && (
-						<Text style={{ color: '#4B5563', fontSize: 10, alignSelf: 'center' }}>
+						<Text style={{ color: theme.colors.text.disabled, fontSize: 10, alignSelf: 'center' }}>
 							+{article.symbols.length - 4}
 						</Text>
 					)}
 				</View>
-				<Ionicons name="chevron-forward" size={14} color="#4B5563" />
+				<Ionicons name="chevron-forward" size={14} color={theme.colors.text.disabled} />
 			</View>
 		</TouchableOpacity>
 	);
@@ -208,17 +198,19 @@ type CompactNewsCardProps = {
 };
 
 export function CompactNewsCard({ article, onPress }: CompactNewsCardProps) {
+	const theme = useTheme();
+
 	return (
 		<TouchableOpacity
 			activeOpacity={0.82}
 			onPress={onPress}
 			style={{
-				backgroundColor: 'rgba(255,255,255,0.03)',
+				backgroundColor: theme.colors.surface.glass,
 				borderRadius: 12,
 				padding: 12,
 				marginBottom: 8,
 				borderWidth: 1,
-				borderColor: 'rgba(255,255,255,0.07)',
+				borderColor: theme.colors.border.primary,
 				flexDirection: 'row',
 				alignItems: 'center',
 				gap: 10,
@@ -226,22 +218,22 @@ export function CompactNewsCard({ article, onPress }: CompactNewsCardProps) {
 		>
 			<View style={{ flex: 1 }}>
 				<Text
-					style={{ color: '#E5E7EB', fontSize: 13, fontWeight: '600', lineHeight: 18, marginBottom: 4 }}
+					style={{ color: theme.colors.text.primary, fontSize: 13, fontWeight: '600', lineHeight: 18, marginBottom: 4 }}
 					numberOfLines={2}
 				>
 					{article.headline}
 				</Text>
 				<View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-					<Text style={{ color: '#6B7280', fontSize: 11 }}>
+					<Text style={{ color: theme.colors.text.tertiary, fontSize: 11 }}>
 						{capitalise(article.source || 'news')}
 					</Text>
-					<Text style={{ color: '#374151', fontSize: 11 }}>·</Text>
-					<Text style={{ color: '#6B7280', fontSize: 11 }}>
+					<Text style={{ color: theme.colors.text.disabled, fontSize: 11 }}>·</Text>
+					<Text style={{ color: theme.colors.text.tertiary, fontSize: 11 }}>
 						{formatRelativeTime(article.created_at)}
 					</Text>
 				</View>
 			</View>
-			<Ionicons name="chevron-forward" size={14} color="#4B5563" />
+			<Ionicons name="chevron-forward" size={14} color={theme.colors.text.disabled} />
 		</TouchableOpacity>
 	);
 }

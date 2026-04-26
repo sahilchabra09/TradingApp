@@ -1,15 +1,15 @@
 /**
- * Drawer Layout - Main navigation wrapper
+ * Drawer Layout — Main navigation wrapper
  */
 import { Drawer } from "expo-router/drawer";
 import { Redirect } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
-import { useTheme } from "@/lib/hooks";
+import { useAppTheme } from "@/lib/ThemeContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 const DrawerLayout = () => {
 	const { isLoaded, isSignedIn } = useAuth();
-	const theme = useTheme();
+	const { theme } = useAppTheme();
 
 	if (!isLoaded) {
 		return null;

@@ -72,11 +72,11 @@ export default function VerifyEmailScreen() {
 	};
 
 	return (
-		<LinearGradient colors={['#000000', '#041510', '#000000']} style={{ flex: 1 }}>
+		<LinearGradient colors={theme.colors.background.gradient as [string, string, string]} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 				<ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }} showsVerticalScrollIndicator={false}>
 					<View style={{ flex: 1, justifyContent: 'center' }}>
-						<Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: 'bold', marginBottom: 8 }}>Check your inbox</Text>
+						<Text style={{ color: theme.colors.text.primary, fontSize: 30, fontWeight: 'bold', marginBottom: 8 }}>Check your inbox</Text>
 						<Text style={{ color: theme.colors.text.secondary, fontSize: 15, marginBottom: 28 }}>
 							We sent a one-time verification code to {displayEmail}.
 						</Text>

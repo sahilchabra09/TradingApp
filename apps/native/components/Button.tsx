@@ -1,8 +1,11 @@
+/**
+ * Button Component — Premium multi-variant button
+ */
+
 import React from 'react';
 import {
   TouchableOpacity,
   Text,
-  StyleSheet,
   ViewStyle,
   TextStyle,
 } from 'react-native';
@@ -38,7 +41,7 @@ export const Button: React.FC<ButtonProps> = ({
   const theme = useTheme();
 
   const getButtonStyle = (): ViewStyle => {
-    const baseStyle: ViewStyle = {
+    const base: ViewStyle = {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -46,98 +49,88 @@ export const Button: React.FC<ButtonProps> = ({
       paddingHorizontal: theme.spacing.lg,
     };
 
-    // Size styles
     switch (size) {
       case 'small':
-        baseStyle.paddingVertical = theme.spacing.sm;
-        baseStyle.minHeight = 40;
+        base.paddingVertical = theme.spacing.sm;
+        base.minHeight = 40;
         break;
       case 'large':
-        baseStyle.paddingVertical = theme.spacing.base;
-        baseStyle.minHeight = 56;
+        base.paddingVertical = theme.spacing.base;
+        base.minHeight = 56;
         break;
       default:
-        baseStyle.paddingVertical = theme.spacing.md;
-        baseStyle.minHeight = 48;
+        base.paddingVertical = theme.spacing.md;
+        base.minHeight = 48;
     }
 
-    // Variant styles
     switch (variant) {
       case 'primary':
-        baseStyle.backgroundColor = disabled
+        base.backgroundColor = disabled
           ? theme.colors.text.disabled
           : theme.colors.accent.primary;
-        Object.assign(baseStyle, !disabled && Shadows.md);
+        if (!disabled) Object.assign(base, Shadows.md);
         break;
       case 'secondary':
-        baseStyle.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-        baseStyle.borderWidth = 1;
-        baseStyle.borderColor = 'rgba(255, 255, 255, 0.2)';
+        base.backgroundColor = theme.colors.surface.secondary;
+        base.borderWidth = 1;
+        base.borderColor = theme.colors.border.primary;
         break;
       case 'outline':
-        baseStyle.backgroundColor = 'transparent';
-        baseStyle.borderWidth = 2;
-        baseStyle.borderColor = theme.colors.accent.primary;
+        base.backgroundColor = 'transparent';
+        base.borderWidth = 1.5;
+        base.borderColor = theme.colors.accent.primary;
         break;
       case 'danger':
-        baseStyle.backgroundColor = disabled
+        base.backgroundColor = disabled
           ? theme.colors.text.disabled
           : theme.colors.error;
-        Object.assign(baseStyle, !disabled && Shadows.md);
+        if (!disabled) Object.assign(base, Shadows.md);
         break;
       case 'ghost':
-        baseStyle.backgroundColor = 'transparent';
+        base.backgroundColor = 'transparent';
         break;
     }
 
-    if (fullWidth) {
-      baseStyle.width = '100%';
-    }
-
-    return baseStyle;
+    if (fullWidth) base.width = '100%';
+    return base;
   };
 
   const getTextStyle = (): TextStyle => {
-    const baseTextStyle: TextStyle = {
+    const base: TextStyle = {
       fontWeight: '600',
       textAlign: 'center',
     };
 
-    // Size text styles
     switch (size) {
       case 'small':
-        baseTextStyle.fontSize = theme.typography.sizes.sm;
+        base.fontSize = theme.typography.sizes.sm;
         break;
       case 'large':
-        baseTextStyle.fontSize = theme.typography.sizes.lg;
+        base.fontSize = theme.typography.sizes.lg;
         break;
       default:
-        baseTextStyle.fontSize = theme.typography.sizes.base;
+        base.fontSize = theme.typography.sizes.base;
     }
 
-    // Variant text colors
     switch (variant) {
       case 'primary':
-        baseTextStyle.color = '#000000';
-        baseTextStyle.fontWeight = '700';
+        base.color = theme.isDark ? '#000000' : '#FFFFFF';
+        base.fontWeight = '700';
         break;
       case 'danger':
-        baseTextStyle.color = '#FFFFFF';
-        baseTextStyle.fontWeight = '700';
+        base.color = '#FFFFFF';
+        base.fontWeight = '700';
         break;
       case 'outline':
-        baseTextStyle.color = theme.colors.accent.primary;
-        baseTextStyle.fontWeight = '700';
+        base.color = theme.colors.accent.primary;
+        base.fontWeight = '700';
         break;
       default:
-        baseTextStyle.color = theme.colors.text.primary;
+        base.color = theme.colors.text.primary;
     }
 
-    if (disabled) {
-      baseTextStyle.color = theme.colors.text.disabled;
-    }
-
-    return baseTextStyle;
+    if (disabled) base.color = theme.colors.text.disabled;
+    return base;
   };
 
   return (
@@ -159,7 +152,13 @@ export const Button: React.FC<ButtonProps> = ({
       ) : (
         <>
           {icon && <>{icon}</>}
-          <Text style={[getTextStyle(), textStyle, icon ? { marginLeft: theme.spacing.sm } : null]}>
+          <Text
+            style={[
+              getTextStyle(),
+              textStyle,
+              icon ? { marginLeft: theme.spacing.sm } : null,
+            ]}
+          >
             {title}
           </Text>
         </>
@@ -167,5 +166,3 @@ export const Button: React.FC<ButtonProps> = ({
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({});

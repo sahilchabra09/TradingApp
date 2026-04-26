@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@clerk/clerk-expo';
 import { Spinner } from '@/components/Spinner';
+import { useAppTheme } from '@/lib/ThemeContext';
 import {
 	getPaperAccount,
 	getPaperHoldings,
@@ -33,6 +34,7 @@ type HomeState = {
 
 export default function HomeScreen() {
 	const router = useRouter();
+	const { theme } = useAppTheme();
 	const { isSignedIn, getToken } = useAuth();
 	const stableGetToken = useStableToken(getToken);
 	const [isLoading, setIsLoading] = useState(true);
@@ -67,12 +69,7 @@ export default function HomeScreen() {
 			).filter((quote): quote is PaperMarketData => Boolean(quote));
 
 			if (!status.hasDemoAccount) {
-				setState({
-					status,
-					portfolio: null,
-					holdings: null,
-					overview,
-				});
+				setState({ status, portfolio: null, holdings: null, overview });
 				setError(null);
 				return;
 			}
@@ -83,12 +80,7 @@ export default function HomeScreen() {
 				getPaperHoldings(account.userId, stableGetToken),
 			]);
 
-			setState({
-				status,
-				portfolio,
-				holdings,
-				overview,
-			});
+			setState({ status, portfolio, holdings, overview });
 			setError(null);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Unable to load dashboard.');
@@ -101,7 +93,6 @@ export default function HomeScreen() {
 		void loadDashboard();
 	}, [loadDashboard]);
 
-	// Re-fetch every time the tab comes into focus (e.g. after placing a trade)
 	useFocusEffect(
 		useCallback(() => {
 			void loadDashboard();
@@ -109,61 +100,56 @@ export default function HomeScreen() {
 	);
 
 	const totals = useMemo(() => {
-		// Use holdingsValue (market value of open positions only) — wallet cash is excluded
 		const totalValue = toNumber(state.portfolio?.holdingsValue);
 		const totalPnl = toNumber(state.portfolio?.totalPnl);
 		const totalPnlPercent = toNumber(state.holdings?.totals?.totalPnlPercent);
-		return {
-			totalValue,
-			totalPnl,
-			totalPnlPercent,
-		};
+		return { totalValue, totalPnl, totalPnlPercent };
 	}, [state.holdings?.totals?.totalPnlPercent, state.portfolio?.totalPnl, state.portfolio?.holdingsValue]);
 
 	const accountBadge = useMemo(() => {
 		if (!state.status) return null;
 		const { kycStatus, hasDemoAccount } = state.status;
 		if (hasDemoAccount && kycStatus === 'approved') {
-			return { label: 'Live Trading', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
+			return { label: 'Live Trading', color: theme.colors.success, bg: `${theme.colors.success}18` };
 		}
 		if (hasDemoAccount) {
-			return { label: 'Paper Trading', color: '#60A5FA', bg: 'rgba(96, 165, 250, 0.15)' };
+			return { label: 'Paper Trading', color: theme.colors.info, bg: `${theme.colors.info}18` };
 		}
 		if (kycStatus === 'pending') {
-			return { label: 'Pending Approval', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' };
+			return { label: 'Pending Approval', color: theme.colors.warning, bg: `${theme.colors.warning}18` };
 		}
 		if (kycStatus === 'rejected') {
-			return { label: 'KYC Rejected', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' };
+			return { label: 'KYC Rejected', color: theme.colors.error, bg: `${theme.colors.error}18` };
 		}
 		if (kycStatus === 'resubmission_required') {
-			return { label: 'Resubmit Required', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' };
+			return { label: 'Resubmit Required', color: theme.colors.warning, bg: `${theme.colors.warning}18` };
 		}
-		return { label: 'KYC Required', color: '#9CA3AF', bg: 'rgba(156, 163, 175, 0.15)' };
-	}, [state.status]);
+		return { label: 'KYC Required', color: theme.colors.text.tertiary, bg: theme.colors.surface.primary };
+	}, [state.status, theme]);
 
 	const portfolioStatusMessage = useMemo(() => {
 		if (!state.status) return null;
 		const { kycStatus, canActivateDemo } = state.status;
 		if (kycStatus === 'rejected') {
-			return { text: 'KYC was rejected. Please resubmit to continue.', color: '#EF4444' };
+			return { text: 'KYC was rejected. Please resubmit to continue.', color: theme.colors.error };
 		}
 		if (kycStatus === 'resubmission_required') {
-			return { text: 'Additional documents required. Please resubmit KYC.', color: '#F59E0B' };
+			return { text: 'Additional documents required. Please resubmit KYC.', color: theme.colors.warning };
 		}
 		if (kycStatus === 'not_started') {
-			return { text: 'Complete identity verification to unlock paper trading.', color: '#9CA3AF' };
+			return { text: 'Complete identity verification to unlock paper trading.', color: theme.colors.text.tertiary };
 		}
 		if (canActivateDemo) {
-			return { text: 'Identity verified. Activate your paper account to start paper trading.', color: '#10B981' };
+			return { text: 'Identity verified. Activate your paper account to start paper trading.', color: theme.colors.accent.primary };
 		}
-		return { text: 'Complete KYC to begin trading.', color: '#9CA3AF' };
-	}, [state.status]);
+		return { text: 'Complete KYC to begin trading.', color: theme.colors.text.tertiary };
+	}, [state.status, theme]);
 
 	if (!isSignedIn) {
 		return (
-			<LinearGradient colors={['#000000', '#0a3d2e', '#000000']} style={{ flex: 1 }}>
+			<LinearGradient colors={theme.colors.background.gradient as [string, string, string]} style={{ flex: 1 }}>
 				<SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-					<Text style={{ color: '#FFFFFF', fontSize: 16, textAlign: 'center' }}>
+					<Text style={{ color: theme.colors.text.primary, fontSize: 16, textAlign: 'center' }}>
 						Sign in to view your live dashboard.
 					</Text>
 				</SafeAreaView>
@@ -173,46 +159,47 @@ export default function HomeScreen() {
 
 	return (
 		<LinearGradient
-			colors={['#000000', '#0a3d2e', '#000000']}
+			colors={theme.colors.background.gradient as [string, string, string]}
 			locations={[0, 0.5, 1]}
 			style={{ flex: 1 }}
 		>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 				{isLoading ? (
 					<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-						<Spinner color="#10B981" />
-						<Text style={{ color: '#9CA3AF', marginTop: 12 }}>Loading live data...</Text>
+						<Spinner />
+						<Text style={{ color: theme.colors.text.tertiary, marginTop: 12 }}>Loading live data...</Text>
 					</View>
 				) : (
-					<ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+					<ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+						{/* Portfolio Value Card */}
 						<View
 							style={{
 								margin: 16,
 								padding: 24,
-								backgroundColor: 'rgba(16, 185, 129, 0.08)',
+								backgroundColor: theme.colors.surface.primary,
 								borderRadius: 20,
 								borderWidth: 1,
-								borderColor: 'rgba(16, 185, 129, 0.2)',
+								borderColor: theme.colors.border.primary,
 							}}
 						>
-						<View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-							<Text style={{ color: '#9CA3AF', fontSize: 13, letterSpacing: 0.5 }}>
-								TOTAL PORTFOLIO VALUE
-							</Text>
-							{accountBadge && (
-								<View style={{
-									backgroundColor: accountBadge.bg,
-									paddingHorizontal: 8,
-									paddingVertical: 4,
-									borderRadius: 8,
-								}}>
-									<Text style={{ color: accountBadge.color, fontSize: 11, fontWeight: '600' }}>
-										{accountBadge.label}
-									</Text>
-								</View>
-							)}
-						</View>
-							<Text style={{ color: '#FFFFFF', fontSize: 40, fontWeight: 'bold', marginBottom: 12, letterSpacing: -1 }}>
+							<View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+								<Text style={{ color: theme.colors.text.secondary, fontSize: 13, letterSpacing: 1, fontWeight: '500' }}>
+									TOTAL PORTFOLIO VALUE
+								</Text>
+								{accountBadge && (
+									<View style={{
+										backgroundColor: accountBadge.bg,
+										paddingHorizontal: 8,
+										paddingVertical: 4,
+										borderRadius: 8,
+									}}>
+										<Text style={{ color: accountBadge.color, fontSize: 11, fontWeight: '600' }}>
+											{accountBadge.label}
+										</Text>
+									</View>
+								)}
+							</View>
+							<Text style={{ color: theme.colors.text.primary, fontSize: 40, fontWeight: '700', marginBottom: 12, letterSpacing: -1.5 }}>
 								{state.portfolio ? formatCurrency(totals.totalValue) : '$0.00'}
 							</Text>
 							{state.portfolio ? (
@@ -220,8 +207,9 @@ export default function HomeScreen() {
 									style={{
 										flexDirection: 'row',
 										alignItems: 'center',
-										backgroundColor:
-											totals.totalPnl >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+										backgroundColor: totals.totalPnl >= 0
+											? `${theme.colors.chart.bullish}18`
+											: `${theme.colors.chart.bearish}18`,
 										paddingHorizontal: 12,
 										paddingVertical: 8,
 										borderRadius: 12,
@@ -231,11 +219,11 @@ export default function HomeScreen() {
 									<Ionicons
 										name={totals.totalPnl >= 0 ? 'trending-up' : 'trending-down'}
 										size={18}
-										color={totals.totalPnl >= 0 ? '#10B981' : '#EF4444'}
+										color={totals.totalPnl >= 0 ? theme.colors.chart.bullish : theme.colors.chart.bearish}
 									/>
 									<Text
 										style={{
-											color: totals.totalPnl >= 0 ? '#10B981' : '#EF4444',
+											color: totals.totalPnl >= 0 ? theme.colors.chart.bullish : theme.colors.chart.bearish,
 											fontSize: 16,
 											fontWeight: '600',
 											marginLeft: 6,
@@ -260,30 +248,31 @@ export default function HomeScreen() {
 									marginBottom: 16,
 									padding: 12,
 									borderRadius: 12,
-									backgroundColor: 'rgba(239, 68, 68, 0.15)',
+									backgroundColor: `${theme.colors.error}15`,
 									borderWidth: 1,
-									borderColor: 'rgba(239, 68, 68, 0.25)',
+									borderColor: `${theme.colors.error}30`,
 								}}
 							>
-								<Text style={{ color: '#FCA5A5' }}>{error}</Text>
+								<Text style={{ color: theme.colors.error }}>{error}</Text>
 							</View>
 						) : null}
 
+						{/* Holdings */}
 						<View style={{ paddingHorizontal: 16 }}>
-							<Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 'bold', marginBottom: 16 }}>
+							<Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 16, letterSpacing: -0.3 }}>
 								Your Holdings
 							</Text>
 							{(state.holdings?.holdings || []).length === 0 ? (
 								<View
 									style={{
-										backgroundColor: 'rgba(255,255,255,0.05)',
+										backgroundColor: theme.colors.surface.primary,
 										borderRadius: 16,
 										padding: 16,
 										borderWidth: 1,
-										borderColor: 'rgba(255,255,255,0.1)',
+										borderColor: theme.colors.border.primary,
 									}}
 								>
-									<Text style={{ color: '#9CA3AF' }}>No holdings yet.</Text>
+									<Text style={{ color: theme.colors.text.tertiary }}>No holdings yet.</Text>
 								</View>
 							) : (
 								state.holdings?.holdings.map((holding) => (
@@ -294,30 +283,30 @@ export default function HomeScreen() {
 											router.push({ pathname: '/misc/asset-detail', params: { symbol: holding.symbol } })
 										}
 										style={{
-											backgroundColor: 'rgba(255, 255, 255, 0.05)',
+											backgroundColor: theme.colors.surface.primary,
 											borderRadius: 16,
 											padding: 16,
 											marginBottom: 12,
 											borderWidth: 1,
-											borderColor: 'rgba(255, 255, 255, 0.1)',
+											borderColor: theme.colors.border.primary,
 										}}
 									>
 										<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
 											<View>
-												<Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600', marginBottom: 4 }}>
+												<Text style={{ color: theme.colors.text.primary, fontSize: 18, fontWeight: '600', marginBottom: 4 }}>
 													{holding.symbol}
 												</Text>
-												<Text style={{ color: '#9CA3AF', fontSize: 13 }}>
+												<Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
 													Qty {holding.quantity}
 												</Text>
 											</View>
 											<View style={{ alignItems: 'flex-end' }}>
-												<Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600', marginBottom: 4 }}>
+												<Text style={{ color: theme.colors.text.primary, fontSize: 18, fontWeight: '600', marginBottom: 4 }}>
 													{formatCurrency(toNumber(holding.marketValue))}
 												</Text>
 												<Text
 													style={{
-														color: toNumber(holding.pnlPercent) >= 0 ? '#10B981' : '#EF4444',
+														color: toNumber(holding.pnlPercent) >= 0 ? theme.colors.chart.bullish : theme.colors.chart.bearish,
 														fontSize: 13,
 														fontWeight: '600',
 													}}
@@ -331,8 +320,9 @@ export default function HomeScreen() {
 							)}
 						</View>
 
+						{/* Market Overview */}
 						<View style={{ paddingHorizontal: 16, marginTop: 20, marginBottom: 80 }}>
-							<Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 'bold', marginBottom: 16 }}>
+							<Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 16, letterSpacing: -0.3 }}>
 								Market Overview
 							</Text>
 							<ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -346,23 +336,23 @@ export default function HomeScreen() {
 										style={{
 											width: 160,
 											marginRight: 12,
-											backgroundColor: 'rgba(255, 255, 255, 0.05)',
+											backgroundColor: theme.colors.surface.primary,
 											borderRadius: 16,
 											padding: 16,
 											borderWidth: 1,
-											borderColor: 'rgba(255, 255, 255, 0.1)',
+											borderColor: theme.colors.border.primary,
 										}}
 									>
-										<Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
+										<Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
 											{quote.symbol}
 										</Text>
-										<Text style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 8 }}>
+										<Text style={{ color: theme.colors.text.tertiary, fontSize: 12, marginBottom: 8 }}>
 											{quote.exchange}
 										</Text>
-										<Text style={{ color: '#FFFFFF', fontSize: 19, fontWeight: 'bold', marginBottom: 8 }}>
+										<Text style={{ color: theme.colors.text.primary, fontSize: 19, fontWeight: '700', marginBottom: 8 }}>
 											{formatCurrency(toNumber(quote.lastPrice))}
 										</Text>
-										<Text style={{ color: '#9CA3AF', fontSize: 12 }}>
+										<Text style={{ color: theme.colors.text.tertiary, fontSize: 12 }}>
 											{quote.lastPriceSource}
 										</Text>
 									</TouchableOpacity>
