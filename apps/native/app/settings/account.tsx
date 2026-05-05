@@ -1,18 +1,25 @@
 /**
  * Account Details Screen
  */
-import { View, Text, ScrollView, Image } from 'react-native';
+import { useState, useMemo } from 'react';
+import { Alert, View, Text, ScrollView, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '@/lib/hooks';
+import { useRouter } from 'expo-router';
+import { useTheme, useStableToken } from '@/lib/hooks';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { useUser } from '@clerk/clerk-expo';
-import { useMemo } from 'react';
+import { useUser, useAuth, useClerk } from '@clerk/clerk-expo';
+import { deleteAccount } from '@/lib/user-api';
 
 export default function AccountDetailsScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const { user } = useUser();
+  const { getToken } = useAuth();
+  const { signOut } = useClerk();
+  const stableGetToken = useStableToken(getToken);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const accountType = useMemo(() => {
     const value = user?.publicMetadata?.accountType;
@@ -52,6 +59,52 @@ export default function AccountDetailsScreen() {
   const fullName = user?.fullName || user?.username || initials;
   const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress;
   const isVerified = kycStatus.toLowerCase() === 'verified';
+
+  const handleDeleteAccount = () => {
+    // First confirmation
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account, all trading history, KYC records, and data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation — ask to type intent
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Your account and all associated data will be erased forever.',
+              [
+                { text: 'No, keep my account', style: 'cancel' },
+                {
+                  text: 'Yes, delete everything',
+                  style: 'destructive',
+                  onPress: performDelete,
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const performDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteAccount(stableGetToken);
+      // Sign out locally — Clerk account is already gone server-side
+      await signOut();
+      router.replace('/(auth)/sign-in');
+    } catch (err) {
+      setIsDeleting(false);
+      Alert.alert(
+        'Deletion Failed',
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      );
+    }
+  };
 
   return (
     <LinearGradient colors={theme.colors.background.gradient as [string, string, string]} locations={[0, 0.5, 1]} style={{ flex: 1 }}>
@@ -116,10 +169,48 @@ export default function AccountDetailsScreen() {
           </View>
         </Card>
 
-        <Button title="Edit Profile" onPress={() => {}} fullWidth />
+        <Button title="Edit Profile" onPress={() => {}} fullWidth style={{ marginBottom: 16 }} />
+
+        {/* ── Danger Zone ─────────────────────────────────────────────── */}
+        <View style={{
+          marginTop: 8,
+          padding: 16,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: `${theme.colors.error}40`,
+          backgroundColor: `${theme.colors.error}08`,
+        }}>
+          <Text style={{
+            color: theme.colors.error,
+            fontSize: 13,
+            fontWeight: '700',
+            letterSpacing: 0.5,
+            marginBottom: 8,
+          }}>
+            DANGER ZONE
+          </Text>
+          <Text style={{
+            color: theme.colors.text.secondary,
+            fontSize: 13,
+            lineHeight: 19,
+            marginBottom: 16,
+          }}>
+            Permanently delete your account and all associated data including KYC records, trade history, and holdings. This action cannot be undone.
+          </Text>
+          <Button
+            title={isDeleting ? 'Deleting...' : 'Delete Account'}
+            onPress={handleDeleteAccount}
+            disabled={isDeleting}
+            fullWidth
+            style={{
+              backgroundColor: theme.colors.error,
+              borderColor: theme.colors.error,
+            }}
+          />
+        </View>
+
       </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
 }
-

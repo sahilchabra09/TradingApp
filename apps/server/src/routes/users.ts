@@ -8,7 +8,25 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { db } from '../db';
-import { users, auditLogs } from '../db/schema';
+import {
+	users,
+	auditLogs,
+	wallets,
+	holdings,
+	trades,
+	kycSessions,
+	sessionHistory,
+	priceAlerts,
+	amlChecks,
+	riskLimits,
+	withdrawalRequests,
+	depositTransactions,
+	paperWallets,
+	paperHoldings,
+	paperTrades,
+	paperTradeAttempts,
+	aiResearchChats,
+} from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { requireAuth, requireKYC } from '../middleware/clerk-auth';
 import { ClerkService } from '../services/clerk.service';
@@ -186,18 +204,28 @@ userRoutes.get(
 });
 
 /**
- * Delete user account (soft delete)
+ * Permanently delete user account (hard delete)
+ *
+ * Deletion order respects FK constraints:
+ *  1. payment records  (FK → wallets + users, both RESTRICT)
+ *  2. AML checks       (FK → users, RESTRICT)
+ *  3. KYC sessions     (FK → users, RESTRICT)
+ *  4. AI research chats (FK → users, CASCADE — explicit for clarity)
+ *  5. trades / holdings / wallets (FK → users, RESTRICT)
+ *  6. hard-delete the user row   → cascades the rest
+ *     (paperWallets/Holdings/Trades/Attempts, sessionHistory,
+ *      priceAlerts, riskLimits all have onDelete:cascade)
+ *  7. delete from Clerk
  */
 userRoutes.delete(
 	'/account',
 	describeRoute({
 		tags: ['Users'],
-		summary: 'Delete account',
-		description: 'Soft-deletes the account. Fails if the user has open positions. Also deletes the user from Clerk.',
+		summary: 'Permanently delete account',
+		description: 'Hard-deletes the user and all associated data from every table, then removes the Clerk account.',
 		security: [{ bearerAuth: [] }],
 		responses: {
-			200: { description: 'Account deleted successfully' },
-			400: { description: 'Open positions exist' },
+			200: { description: 'Account permanently deleted' },
 			401: { description: 'Not authenticated' },
 		},
 	}),
@@ -206,43 +234,35 @@ userRoutes.delete(
 	const user = c.get('user');
 	const clerkAuth = c.get('clerkAuth');
 
-	// Check if user has any pending withdrawals or open positions
-	const hasOpenPositions = await db.query.holdings.findFirst({
-		where: (holdings, { eq, and, gt }) =>
-			and(eq(holdings.userId, user.id), gt(holdings.quantity, '0')),
-	});
+	// 1. Payment records first (FK → wallets AND users, both RESTRICT)
+	await db.delete(withdrawalRequests).where(eq(withdrawalRequests.userId, user.id));
+	await db.delete(depositTransactions).where(eq(depositTransactions.userId, user.id));
 
-	if (hasOpenPositions) {
-		return ResponseHelper.error(
-			c,
-			'Cannot delete account with open positions. Please close all positions first.',
-			'OPEN_POSITIONS_EXIST',
-			400
-		);
-	}
+	// 2. AML compliance checks (FK → users, RESTRICT)
+	await db.delete(amlChecks).where(eq(amlChecks.userId, user.id));
 
-	// Soft delete in database
-	await db
-		.update(users)
-		.set({
-			deletedAt: new Date(),
-			accountStatus: 'closed',
-		})
-		.where(eq(users.id, user.id));
+	// 3. KYC sessions (FK → users, RESTRICT)
+	await db.delete(kycSessions).where(eq(kycSessions.userId, user.id));
 
-	// Delete from Clerk
+	// 4. AI research chats (FK → users, CASCADE — explicit)
+	await db.delete(aiResearchChats).where(eq(aiResearchChats.userId, user.id));
+
+	// 5. Real-money trading tables (FK → users, RESTRICT)
+	await db.delete(trades).where(eq(trades.userId, user.id));
+	await db.delete(holdings).where(eq(holdings.userId, user.id));
+	await db.delete(wallets).where(eq(wallets.userId, user.id));
+
+	// 6. Hard-delete the user row.
+	//    Cascades automatically handle:
+	//      paperWallets, paperHoldings, paperTrades, paperTradeAttempts
+	//      sessionHistory, priceAlerts, riskLimits
+	//    auditLogs.userId is SET NULL (preserved for compliance trail).
+	await db.delete(users).where(eq(users.id, user.id));
+
+	// 7. Delete from Clerk (after DB so we still have clerkId if DB fails)
 	await ClerkService.deleteUser(clerkAuth.userId);
 
-	// Create audit log
-	await db.insert(auditLogs).values({
-		userId: user.id,
-		eventType: 'account_deleted',
-		eventCategory: 'authentication',
-		description: 'User deleted their account',
-		severity: 'warning',
-	});
-
-	return ResponseHelper.success(c, null, 'Account deleted successfully');
+	return ResponseHelper.success(c, null, 'Account permanently deleted.');
 });
 
 /**

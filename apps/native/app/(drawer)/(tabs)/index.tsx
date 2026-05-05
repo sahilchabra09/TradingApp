@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@clerk/clerk-expo';
+import { useUser } from '@clerk/clerk-expo';
 import { Spinner } from '@/components/Spinner';
 import { useAppTheme } from '@/lib/ThemeContext';
 import {
@@ -19,6 +20,8 @@ import {
 	type PaperPortfolioResponse,
 	type PaperStatus,
 } from '@/lib/paper-api';
+import { fetchNews, type NewsArticle } from '@/lib/news-api';
+import { CompactNewsCard } from '@/components/NewsCard';
 import { formatCurrency, formatPercentage } from '@/lib/formatters';
 import { useStableToken } from '@/lib/hooks';
 
@@ -36,6 +39,7 @@ export default function HomeScreen() {
 	const router = useRouter();
 	const { theme } = useAppTheme();
 	const { isSignedIn, getToken } = useAuth();
+	const { user } = useUser();
 	const stableGetToken = useStableToken(getToken);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -45,6 +49,10 @@ export default function HomeScreen() {
 		holdings: null,
 		overview: [],
 	});
+
+	// ── Trending news ──────────────────────────────────────────────────────────
+	const [trendingNews, setTrendingNews] = useState<NewsArticle[]>([]);
+	const [newsLoading, setNewsLoading] = useState(false);
 
 	const loadDashboard = useCallback(async () => {
 		if (!isSignedIn) {
@@ -99,6 +107,34 @@ export default function HomeScreen() {
 		}, [loadDashboard])
 	);
 
+	// ── Load trending news after holdings are known ────────────────────────────
+	useEffect(() => {
+		if (!isSignedIn || isLoading) return;
+
+		const holdingSymbols = (state.holdings?.holdings ?? [])
+			.map((h) => h.symbol)
+			.slice(0, 5); // limit to top 5 held symbols
+
+		void (async () => {
+			try {
+				setNewsLoading(true);
+				const result = await fetchNews(
+					{
+						symbols: holdingSymbols.length > 0 ? holdingSymbols.join(',') : undefined,
+						limit: 5,
+						sort: 'desc',
+					},
+					stableGetToken
+				);
+				setTrendingNews(result.news);
+			} catch {
+				setTrendingNews([]);
+			} finally {
+				setNewsLoading(false);
+			}
+		})();
+	}, [isSignedIn, isLoading, state.holdings]);
+
 	const totals = useMemo(() => {
 		const totalValue = toNumber(state.portfolio?.holdingsValue);
 		const totalPnl = toNumber(state.portfolio?.totalPnl);
@@ -145,6 +181,23 @@ export default function HomeScreen() {
 		return { text: 'Complete KYC to begin trading.', color: theme.colors.text.tertiary };
 	}, [state.status, theme]);
 
+	// Resolved display name: prefer firstName, fallback to username, then email prefix
+	const displayName = useMemo(() => {
+		if (!user) return 'Trader';
+		return (
+			user.firstName ||
+			user.username ||
+			user.primaryEmailAddress?.emailAddress?.split('@')[0] ||
+			'Trader'
+		);
+	}, [user]);
+
+	const holdingSymbols = (state.holdings?.holdings ?? []).map((h) => h.symbol);
+	const newsTitle =
+		holdingSymbols.length > 0
+			? `News for Your Holdings`
+			: 'Trending News';
+
 	if (!isSignedIn) {
 		return (
 			<LinearGradient colors={theme.colors.background.gradient as [string, string, string]} style={{ flex: 1 }}>
@@ -164,6 +217,59 @@ export default function HomeScreen() {
 			style={{ flex: 1 }}
 		>
 			<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+
+				{/* ── Welcome Header ───────────────────────────────────────────── */}
+				<View
+					style={{
+						flexDirection: 'row',
+						alignItems: 'center',
+						paddingHorizontal: 20,
+						paddingTop: 8,
+						paddingBottom: 12,
+						borderBottomWidth: 1,
+						borderBottomColor: theme.colors.border.primary,
+					}}
+				>
+					{/* Greeting */}
+					<View style={{ flex: 1 }}>
+						<Text style={{
+							color: theme.colors.text.secondary,
+							fontSize: 13,
+							fontWeight: '500',
+							letterSpacing: 0.2,
+						}}>
+							Welcome back
+						</Text>
+						<Text style={{
+							color: theme.colors.text.primary,
+							fontSize: 24,
+							fontWeight: '700',
+							letterSpacing: -0.5,
+							marginTop: 1,
+						}}>
+							{displayName}
+						</Text>
+					</View>
+
+					{/* Circular search button */}
+					<TouchableOpacity
+						activeOpacity={0.75}
+						onPress={() => router.push('/search/market')}
+						style={{
+							width: 44,
+							height: 44,
+							borderRadius: 22,
+							backgroundColor: theme.colors.surface.secondary,
+							borderWidth: 1,
+							borderColor: theme.colors.border.primary,
+							alignItems: 'center',
+							justifyContent: 'center',
+						}}
+					>
+						<Ionicons name="search" size={20} color={theme.colors.text.primary} />
+					</TouchableOpacity>
+				</View>
+
 				{isLoading ? (
 					<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
 						<Spinner />
@@ -321,7 +427,7 @@ export default function HomeScreen() {
 						</View>
 
 						{/* Market Overview */}
-						<View style={{ paddingHorizontal: 16, marginTop: 20, marginBottom: 80 }}>
+						<View style={{ paddingHorizontal: 16, marginTop: 20 }}>
 							<Text style={{ color: theme.colors.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 16, letterSpacing: -0.3 }}>
 								Market Overview
 							</Text>
@@ -359,6 +465,65 @@ export default function HomeScreen() {
 								))}
 							</ScrollView>
 						</View>
+
+						{/* ── Trending / Holdings News ─────────────────────────────── */}
+						<View style={{ paddingHorizontal: 16, marginTop: 28, marginBottom: 80 }}>
+							<View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+								<Text style={{
+									color: theme.colors.text.primary,
+									fontSize: 20,
+									fontWeight: '700',
+									flex: 1,
+									letterSpacing: -0.3,
+								}}>
+									{newsTitle}
+								</Text>
+								<TouchableOpacity
+									onPress={() => router.push('/(drawer)/(tabs)/news')}
+									style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+								>
+									<Text style={{ color: theme.colors.accent.primary, fontSize: 13, fontWeight: '600' }}>
+										View All
+									</Text>
+									<Ionicons name="chevron-forward" size={14} color={theme.colors.accent.primary} />
+								</TouchableOpacity>
+							</View>
+
+							{newsLoading ? (
+								<View style={{ alignItems: 'center', paddingVertical: 20 }}>
+									<Spinner size="small" />
+								</View>
+							) : trendingNews.length > 0 ? (
+								<View>
+									{trendingNews.map((article) => (
+										<CompactNewsCard
+											key={article.id}
+											article={article}
+											onPress={() =>
+												router.push({
+													pathname: '/news/article',
+													params: { data: JSON.stringify(article) },
+												})
+											}
+										/>
+									))}
+								</View>
+							) : (
+								<View style={{
+									padding: 20,
+									borderRadius: 14,
+									backgroundColor: theme.colors.surface.glass,
+									borderWidth: 1,
+									borderColor: theme.colors.border.primary,
+									alignItems: 'center',
+								}}>
+									<Text style={{ color: theme.colors.text.secondary, fontSize: 13 }}>
+										No news available right now.
+									</Text>
+								</View>
+							)}
+						</View>
+
 					</ScrollView>
 				)}
 			</SafeAreaView>
