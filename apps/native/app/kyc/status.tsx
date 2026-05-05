@@ -631,20 +631,6 @@ export default function KYCStatusScreen() {
             </>
           )}
 
-          {/* Help link */}
-          <TouchableOpacity 
-            onPress={() => router.push('/settings/support' as any)}
-            style={{ alignItems: 'center', marginTop: 8 }}
-          >
-            <Text style={{ 
-              color: theme.colors.accent.primary, 
-              fontSize: 14,
-              textDecorationLine: 'underline'
-            }}>
-              Need help? Contact Support
-            </Text>
-          </TouchableOpacity>
-
           {/* Pull to refresh hint */}
           <Text style={{ 
             color: theme.colors.text.tertiary, 

@@ -1,5 +1,19 @@
 type TokenGetter = () => Promise<string | null>;
 
+/** Safely extract a human-readable message from an unknown error value.
+ *  Handles the case where infrastructure (e.g. Vercel) returns `error` as an
+ *  object like `{ code: "DEPLOYMENT_NOT_FOUND", message: "…" }` rather than
+ *  a plain string, which would otherwise produce "[object Object]" in the UI.
+ */
+function extractErrorMessage(val: unknown, fallback: string): string {
+	if (typeof val === 'string' && val.length > 0) return val;
+	if (val !== null && typeof val === 'object') {
+		const msg = (val as Record<string, unknown>).message;
+		if (typeof msg === 'string' && msg.length > 0) return msg;
+	}
+	return fallback;
+}
+
 type ApiEnvelope<T> = {
 	success: boolean;
 	data?: T;
@@ -158,7 +172,7 @@ async function paperRequest<T>(
 	}
 
 	if (!response.ok || !payload.success || !payload.data) {
-		throw new Error(payload.error || payload.message || 'The paper trading request failed.');
+		throw new Error(extractErrorMessage(payload.error, extractErrorMessage(payload.message, 'The paper trading request failed.')));
 	}
 
 	return payload.data;

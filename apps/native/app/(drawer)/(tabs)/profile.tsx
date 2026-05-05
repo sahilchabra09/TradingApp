@@ -79,9 +79,7 @@ export default function ProfileScreen() {
     { id: '1', title: 'Account Settings', icon: 'person-outline', screen: '/settings/account', onPress: null },
     { id: '2', title: 'Wallet & Payments', icon: 'wallet-outline', screen: '/wallets/balances', onPress: null },
     { id: '3', title: 'KYC Verification', icon: 'shield-checkmark-outline', screen: null, onPress: handleKycPress },
-    { id: '4', title: 'Security', icon: 'lock-closed-outline', screen: '/settings/security', onPress: null },
-    { id: '5', title: 'Help & Support', icon: 'help-circle-outline', screen: '/settings/support', onPress: null },
-    { id: '6', title: 'Invite Friends', icon: 'gift-outline', screen: '/settings/invite', onPress: null },
+
   ] as const;
 
   const kycBadge = useMemo(() => {

@@ -5,6 +5,19 @@
 
 type TokenGetter = () => Promise<string | null>;
 
+/** Safely extract a human-readable message from an unknown error value.
+ *  Handles infrastructure errors (e.g. Vercel) that return `error` as an
+ *  object instead of a plain string, which would otherwise produce "[object Object]".
+ */
+function extractErrorMessage(val: unknown, fallback: string): string {
+	if (typeof val === 'string' && val.length > 0) return val;
+	if (val !== null && typeof val === 'object') {
+		const msg = (val as Record<string, unknown>).message;
+		if (typeof msg === 'string' && msg.length > 0) return msg;
+	}
+	return fallback;
+}
+
 const API_BASE_URL = (process.env.EXPO_PUBLIC_SERVER_URL || 'http://localhost:3004').replace(
 	/\/+$/,
 	''
@@ -45,7 +58,7 @@ async function userRequest<T>(
 	}
 
 	if (!res.ok || !payload.success) {
-		throw new Error(payload.error || payload.message || 'Request failed.');
+		throw new Error(extractErrorMessage(payload.error, extractErrorMessage(payload.message, 'Request failed.')));
 	}
 
 	return payload.data as T;

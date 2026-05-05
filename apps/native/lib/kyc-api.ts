@@ -7,6 +7,19 @@ import { Platform } from 'react-native';
 
 // API Configuration
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
+/** Safely extract a human-readable message from an unknown error value.
+ *  Handles infrastructure errors (e.g. Vercel) that return `error` as an
+ *  object instead of a plain string, which would otherwise produce "[object Object]".
+ */
+function extractErrorMessage(val: unknown, fallback: string): string {
+	if (typeof val === 'string' && val.length > 0) return val;
+	if (val !== null && typeof val === 'object') {
+		const msg = (val as Record<string, unknown>).message;
+		if (typeof msg === 'string' && msg.length > 0) return msg;
+	}
+	return fallback;
+}
 // Session status types
 export type KycSessionStatus = 
 	| 'created' 
@@ -200,6 +213,12 @@ class KycApi {
 					error: `Server returned an invalid response (HTTP ${response.status}). ` +
 						'If using ngrok, make sure the tunnel is still active.',
 				};
+			}
+			// Normalize the error field — infrastructure (e.g. Vercel) may return it as an
+			// object like { code: "DEPLOYMENT_NOT_FOUND", message: "…" } which would render
+			// as "[object Object]" in the UI if passed through as-is.
+			if (data.error !== undefined) {
+				data.error = extractErrorMessage(data.error as unknown, 'An unexpected server error occurred.');
 			}
 			console.log('[KYC API] Response:', data);
 			return data;
